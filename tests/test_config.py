@@ -71,3 +71,17 @@ def test_voyage_api_key(monkeypatch):
 
     s = Settings()
     assert s.voyage_api_key == "pa-test-voyage-key"
+
+
+def test_comm_settings_defaults(settings):
+    assert settings.telegram_bot_token == ""
+    assert settings.comm_batch_interval_seconds == 30
+    assert settings.comm_max_batch_size == 10
+    assert settings.comm_context_window_size == 20
+    assert settings.comm_media_dir == "/tmp/max/media"
+    assert settings.comm_webhook_enabled is False
+    assert settings.comm_webhook_host == "0.0.0.0"
+    assert settings.comm_webhook_port == 8443
+    assert settings.comm_webhook_path == "/webhook/telegram"
+    assert settings.comm_webhook_url == ""
+    assert settings.comm_webhook_secret == ""
