@@ -61,6 +61,18 @@ async def test_set_state_document(warm):
 
 
 @pytest.mark.asyncio
+async def test_set_with_ttl_expires(warm):
+    """Verify TTL actually expires keys."""
+    import asyncio
+    await warm.set("short_lived", {"data": "brief"}, ttl_seconds=1)
+    result = await warm.get("short_lived")
+    assert result is not None
+    await asyncio.sleep(1.5)
+    result = await warm.get("short_lived")
+    assert result is None
+
+
+@pytest.mark.asyncio
 async def test_list_push_and_range(warm):
     await warm.list_push("events", {"type": "task_started", "id": "1"})
     await warm.list_push("events", {"type": "task_completed", "id": "2"})
