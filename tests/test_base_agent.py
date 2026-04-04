@@ -1,8 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from max.agents.base import BaseAgent, AgentConfig
-from max.llm.models import ModelType, LLMResponse
+import pytest
+
+from max.agents.base import AgentConfig, BaseAgent
+from max.llm.models import LLMResponse, ModelType
 
 
 class SampleAgent(BaseAgent):

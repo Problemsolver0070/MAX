@@ -21,7 +21,9 @@ class ToolDefinition(BaseModel):
     category: str
     description: str
     permissions: list[str] = Field(default_factory=list)
-    input_schema: dict[str, Any] = Field(default_factory=lambda: {"type": "object", "properties": {}})
+    input_schema: dict[str, Any] = Field(
+        default_factory=lambda: {"type": "object", "properties": {}}
+    )
     cost_tier: str = "low"
     reliability: float = 1.0
     avg_latency_ms: int = 0
@@ -80,9 +82,11 @@ class ToolRegistry:
             tool = self._tools.get(tool_id)
             if tool is None:
                 continue
-            result.append({
-                "name": tool.tool_id,
-                "description": tool.description,
-                "input_schema": tool.input_schema,
-            })
+            result.append(
+                {
+                    "name": tool.tool_id,
+                    "description": tool.description,
+                    "input_schema": tool.input_schema,
+                }
+            )
         return result

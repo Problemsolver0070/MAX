@@ -30,9 +30,7 @@ class WarmMemory:
     def _key(self, key: str) -> str:
         return f"{PREFIX}{key}"
 
-    async def set(
-        self, key: str, value: dict[str, Any], ttl_seconds: int | None = None
-    ) -> None:
+    async def set(self, key: str, value: dict[str, Any], ttl_seconds: int | None = None) -> None:
         """Set a key to a JSON-serialised value, with optional TTL."""
         payload = json.dumps(value)
         if ttl_seconds:
@@ -56,9 +54,7 @@ class WarmMemory:
         payload = json.dumps(value)
         await self._redis.rpush(self._key(key), payload)
 
-    async def list_range(
-        self, key: str, start: int, stop: int
-    ) -> list[dict[str, Any]]:
+    async def list_range(self, key: str, start: int, stop: int) -> list[dict[str, Any]]:
         """Return a slice of the list, deserialised from JSON."""
         raw_items = await self._redis.lrange(self._key(key), start, stop)
         return [json.loads(item) for item in raw_items]

@@ -1,8 +1,7 @@
 import uuid
-from datetime import datetime, timezone
 
-from max.models.messages import Intent, Result, ClarificationRequest, StatusUpdate, Priority
-from max.models.tasks import Task, SubTask, TaskStatus, AuditReport, AuditVerdict
+from max.models.messages import ClarificationRequest, Intent, Priority, Result, StatusUpdate
+from max.models.tasks import AuditReport, AuditVerdict, SubTask, Task, TaskStatus
 
 
 def test_intent_creation():
@@ -90,7 +89,11 @@ def test_audit_report_with_issues():
         goal_alignment=0.6,
         confidence=0.9,
         issues=[
-            {"severity": "critical", "description": "Missing error handling", "suggestion": "Add try/except"}
+            {
+                "severity": "critical",
+                "description": "Missing error handling",
+                "suggestion": "Add try/except",
+            }
         ],
     )
     assert report.verdict == AuditVerdict.FAIL

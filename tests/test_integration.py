@@ -40,7 +40,10 @@ async def test_full_pipeline_smoke(db, warm_memory, bus):
     # 3. Persist task to PostgreSQL
     await db.execute(
         "INSERT INTO tasks (id, goal_anchor, source_intent_id, status) VALUES ($1, $2, $3, $4)",
-        task.id, task.goal_anchor, task.source_intent_id, task.status.value,
+        task.id,
+        task.goal_anchor,
+        task.source_intent_id,
+        task.status.value,
     )
     row = await db.fetchone("SELECT * FROM tasks WHERE id = $1", task.id)
     assert row["goal_anchor"] == "Write a Python hello world script"
@@ -86,20 +89,22 @@ async def test_full_pipeline_smoke(db, warm_memory, bus):
 
     # 7. Register and look up a tool
     registry = ToolRegistry()
-    registry.register(ToolDefinition(
-        tool_id="file.write",
-        category="code",
-        description="Write content to a file",
-        permissions=["fs.write"],
-        input_schema={
-            "type": "object",
-            "properties": {
-                "path": {"type": "string"},
-                "content": {"type": "string"},
+    registry.register(
+        ToolDefinition(
+            tool_id="file.write",
+            category="code",
+            description="Write content to a file",
+            permissions=["fs.write"],
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string"},
+                    "content": {"type": "string"},
+                },
+                "required": ["path", "content"],
             },
-            "required": ["path", "content"],
-        },
-    ))
+        )
+    )
     tools = registry.to_anthropic_tools(["file.write"])
     assert len(tools) == 1
     assert tools[0]["name"] == "file.write"
