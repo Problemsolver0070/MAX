@@ -53,3 +53,36 @@ async def test_fetchall(db):
         )
     rows = await db.fetchall("SELECT * FROM tasks ORDER BY created_at")
     assert len(rows) >= 3
+
+
+@pytest.mark.asyncio
+async def test_transaction_commit(db):
+    task_id = uuid.uuid4()
+    intent_id = uuid.uuid4()
+    async with db.transaction() as conn:
+        await conn.execute(
+            "INSERT INTO tasks (id, goal_anchor, source_intent_id) VALUES ($1, $2, $3)",
+            task_id,
+            "Transactional goal",
+            intent_id,
+        )
+    row = await db.fetchone("SELECT * FROM tasks WHERE id = $1", task_id)
+    assert row is not None
+    assert row["goal_anchor"] == "Transactional goal"
+
+
+@pytest.mark.asyncio
+async def test_transaction_rollback(db):
+    task_id = uuid.uuid4()
+    intent_id = uuid.uuid4()
+    with pytest.raises(ValueError, match="Intentional rollback"):
+        async with db.transaction() as conn:
+            await conn.execute(
+                "INSERT INTO tasks (id, goal_anchor, source_intent_id) VALUES ($1, $2, $3)",
+                task_id,
+                "Should not persist",
+                intent_id,
+            )
+            raise ValueError("Intentional rollback")
+    row = await db.fetchone("SELECT * FROM tasks WHERE id = $1", task_id)
+    assert row is None
