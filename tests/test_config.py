@@ -50,3 +50,23 @@ def test_postgres_dsn_special_chars(monkeypatch):
     monkeypatch.setenv("POSTGRES_DB", "max")
     settings = Settings()
     assert settings.postgres_dsn == "postgresql://max:p%40ss%2Fw%23rd@localhost:5432/max"
+
+
+def test_memory_settings_defaults(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "test")
+    settings = Settings()
+    assert settings.memory_compaction_interval_seconds == 60
+    assert settings.memory_warm_budget_tokens == 100_000
+    assert settings.memory_graph_cache_max_nodes == 500
+    assert settings.memory_embedding_dimension == 1024
+    assert settings.memory_anchor_re_evaluation_interval_hours == 6
+
+
+def test_voyage_api_key(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "test")
+    monkeypatch.setenv("VOYAGE_API_KEY", "pa-test-voyage-key")
+    from max.config import Settings
+    s = Settings()
+    assert s.voyage_api_key == "pa-test-voyage-key"
