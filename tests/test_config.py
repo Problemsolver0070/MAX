@@ -68,5 +68,6 @@ def test_voyage_api_key(monkeypatch):
     monkeypatch.setenv("POSTGRES_PASSWORD", "test")
     monkeypatch.setenv("VOYAGE_API_KEY", "pa-test-voyage-key")
     from max.config import Settings
+
     s = Settings()
     assert s.voyage_api_key == "pa-test-voyage-key"
