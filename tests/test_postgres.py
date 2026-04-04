@@ -10,6 +10,11 @@ async def db():
     database = Database(dsn="postgresql://max:max_dev_password@localhost:5432/max")
     await database.connect()
     # Drop old tables so schema changes (FK, new tables) take effect
+    await database.execute("DROP TABLE IF EXISTS graph_edges CASCADE")
+    await database.execute("DROP TABLE IF EXISTS graph_nodes CASCADE")
+    await database.execute("DROP TABLE IF EXISTS compaction_log CASCADE")
+    await database.execute("DROP TABLE IF EXISTS performance_metrics CASCADE")
+    await database.execute("DROP TABLE IF EXISTS shelved_improvements CASCADE")
     await database.execute("DROP TABLE IF EXISTS status_updates CASCADE")
     await database.execute("DROP TABLE IF EXISTS clarification_requests CASCADE")
     await database.execute("DROP TABLE IF EXISTS results CASCADE")
@@ -23,6 +28,11 @@ async def db():
     await database.init_schema()
     yield database
     # Clean test data in FK-safe order
+    await database.execute("DELETE FROM graph_edges")
+    await database.execute("DELETE FROM graph_nodes")
+    await database.execute("DELETE FROM compaction_log")
+    await database.execute("DELETE FROM performance_metrics")
+    await database.execute("DELETE FROM shelved_improvements")
     await database.execute("DELETE FROM status_updates")
     await database.execute("DELETE FROM clarification_requests")
     await database.execute("DELETE FROM results")
@@ -201,3 +211,110 @@ async def test_tasks_source_intent_fk(db):
     )
     row = await db.fetchone("SELECT * FROM tasks WHERE id = $1", task_id)
     assert row["source_intent_id"] == intent_id
+
+
+@pytest.mark.asyncio
+async def test_memory_system_tables_exist(db):
+    """Verify Phase 2 tables are created by schema init."""
+    tables = await db.fetchall("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+    table_names = {row["tablename"] for row in tables}
+    phase2_tables = {
+        "graph_nodes",
+        "graph_edges",
+        "compaction_log",
+        "performance_metrics",
+        "shelved_improvements",
+    }
+    assert phase2_tables.issubset(table_names), f"Missing tables: {phase2_tables - table_names}"
+
+
+@pytest.mark.asyncio
+async def test_context_anchors_has_lifecycle_columns(db):
+    """Verify context_anchors has Phase 2 columns."""
+    cols = await db.fetchall(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'context_anchors'"
+    )
+    col_names = {row["column_name"] for row in cols}
+    expected = {
+        "lifecycle_state",
+        "relevance_score",
+        "last_accessed",
+        "access_count",
+        "decay_rate",
+        "permanence_class",
+        "superseded_by",
+        "version",
+        "parent_anchor_id",
+    }
+    assert expected.issubset(col_names), f"Missing columns: {expected - col_names}"
+
+
+@pytest.mark.asyncio
+async def test_memory_embeddings_has_phase2_columns(db):
+    """Verify memory_embeddings has Phase 2 columns."""
+    cols = await db.fetchall(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'memory_embeddings'"
+    )
+    col_names = {row["column_name"] for row in cols}
+    expected = {
+        "relevance_score",
+        "tier",
+        "last_accessed",
+        "access_count",
+        "summary",
+        "base_relevance",
+        "decay_rate",
+        "search_vector",
+    }
+    assert expected.issubset(col_names), f"Missing columns: {expected - col_names}"
+
+
+@pytest.mark.asyncio
+async def test_graph_node_insert_and_fetch(db):
+    """Insert and fetch a graph node."""
+    node_id = uuid.uuid4()
+    content_id = uuid.uuid4()
+    await db.execute(
+        "INSERT INTO graph_nodes (id, node_type, content_id, metadata) VALUES ($1, $2, $3, $4)",
+        node_id,
+        "task",
+        content_id,
+        "{}",
+    )
+    row = await db.fetchone("SELECT * FROM graph_nodes WHERE id = $1", node_id)
+    assert row is not None
+    assert row["node_type"] == "task"
+
+
+@pytest.mark.asyncio
+async def test_graph_edge_insert_with_fk(db):
+    """Insert graph edge with FK to nodes."""
+    n1 = uuid.uuid4()
+    n2 = uuid.uuid4()
+    c1 = uuid.uuid4()
+    c2 = uuid.uuid4()
+    await db.execute(
+        "INSERT INTO graph_nodes (id, node_type, content_id) VALUES ($1, $2, $3)",
+        n1,
+        "task",
+        c1,
+    )
+    await db.execute(
+        "INSERT INTO graph_nodes (id, node_type, content_id) VALUES ($1, $2, $3)",
+        n2,
+        "anchor",
+        c2,
+    )
+    edge_id = uuid.uuid4()
+    await db.execute(
+        "INSERT INTO graph_edges (id, source_id, target_id, relation, weight) "
+        "VALUES ($1, $2, $3, $4, $5)",
+        edge_id,
+        n1,
+        n2,
+        "depends_on",
+        0.9,
+    )
+    row = await db.fetchone("SELECT * FROM graph_edges WHERE id = $1", edge_id)
+    assert row is not None
+    assert float(row["weight"]) == pytest.approx(0.9)
