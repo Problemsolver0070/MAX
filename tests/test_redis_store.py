@@ -64,6 +64,7 @@ async def test_set_state_document(warm):
 async def test_set_with_ttl_expires(warm):
     """Verify TTL actually expires keys."""
     import asyncio
+
     await warm.set("short_lived", {"data": "brief"}, ttl_seconds=1)
     result = await warm.get("short_lived")
     assert result is not None

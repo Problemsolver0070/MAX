@@ -44,12 +44,19 @@ async def test_insert_and_fetch_task(db):
     task_id = uuid.uuid4()
     intent_id = uuid.uuid4()
     await db.execute(
-        "INSERT INTO intents (id, user_message, source_platform, goal_anchor) VALUES ($1, $2, $3, $4)",
-        intent_id, "Test message", "telegram", "Test goal",
+        "INSERT INTO intents (id, user_message, source_platform, goal_anchor)"
+        " VALUES ($1, $2, $3, $4)",
+        intent_id,
+        "Test message",
+        "telegram",
+        "Test goal",
     )
     await db.execute(
         "INSERT INTO tasks (id, goal_anchor, source_intent_id, status) VALUES ($1, $2, $3, $4)",
-        task_id, "Test goal", intent_id, "pending",
+        task_id,
+        "Test goal",
+        intent_id,
+        "pending",
     )
     row = await db.fetchone("SELECT * FROM tasks WHERE id = $1", task_id)
     assert row["goal_anchor"] == "Test goal"
@@ -61,12 +68,18 @@ async def test_fetchall(db):
     for i in range(3):
         intent_id = uuid.uuid4()
         await db.execute(
-            "INSERT INTO intents (id, user_message, source_platform, goal_anchor) VALUES ($1, $2, $3, $4)",
-            intent_id, f"Message {i}", "telegram", f"Goal {i}",
+            "INSERT INTO intents (id, user_message, source_platform, goal_anchor)"
+            " VALUES ($1, $2, $3, $4)",
+            intent_id,
+            f"Message {i}",
+            "telegram",
+            f"Goal {i}",
         )
         await db.execute(
             "INSERT INTO tasks (id, goal_anchor, source_intent_id) VALUES ($1, $2, $3)",
-            uuid.uuid4(), f"Goal {i}", intent_id,
+            uuid.uuid4(),
+            f"Goal {i}",
+            intent_id,
         )
     rows = await db.fetchall("SELECT * FROM tasks ORDER BY created_at")
     assert len(rows) >= 3
@@ -77,8 +90,12 @@ async def test_transaction_commit(db):
     task_id = uuid.uuid4()
     intent_id = uuid.uuid4()
     await db.execute(
-        "INSERT INTO intents (id, user_message, source_platform, goal_anchor) VALUES ($1, $2, $3, $4)",
-        intent_id, "Transaction message", "telegram", "Transactional goal",
+        "INSERT INTO intents (id, user_message, source_platform, goal_anchor)"
+        " VALUES ($1, $2, $3, $4)",
+        intent_id,
+        "Transaction message",
+        "telegram",
+        "Transactional goal",
     )
     async with db.transaction() as conn:
         await conn.execute(
@@ -97,8 +114,12 @@ async def test_transaction_rollback(db):
     task_id = uuid.uuid4()
     intent_id = uuid.uuid4()
     await db.execute(
-        "INSERT INTO intents (id, user_message, source_platform, goal_anchor) VALUES ($1, $2, $3, $4)",
-        intent_id, "Rollback message", "telegram", "Should not persist",
+        "INSERT INTO intents (id, user_message, source_platform, goal_anchor)"
+        " VALUES ($1, $2, $3, $4)",
+        intent_id,
+        "Rollback message",
+        "telegram",
+        "Should not persist",
     )
     with pytest.raises(ValueError, match="Intentional rollback"):
         async with db.transaction() as conn:
@@ -119,7 +140,11 @@ async def test_intents_table_exists(db):
     await db.execute(
         "INSERT INTO intents (id, user_message, source_platform, goal_anchor, priority)"
         " VALUES ($1, $2, $3, $4, $5)",
-        intent_id, "Deploy the app", "telegram", "Deploy the app", "normal",
+        intent_id,
+        "Deploy the app",
+        "telegram",
+        "Deploy the app",
+        "normal",
     )
     row = await db.fetchone("SELECT * FROM intents WHERE id = $1", intent_id)
     assert row["user_message"] == "Deploy the app"
@@ -130,18 +155,27 @@ async def test_intents_table_exists(db):
 async def test_results_table_exists(db):
     intent_id = uuid.uuid4()
     await db.execute(
-        "INSERT INTO intents (id, user_message, source_platform, goal_anchor) VALUES ($1, $2, $3, $4)",
-        intent_id, "Test", "telegram", "Test",
+        "INSERT INTO intents (id, user_message, source_platform, goal_anchor)"
+        " VALUES ($1, $2, $3, $4)",
+        intent_id,
+        "Test",
+        "telegram",
+        "Test",
     )
     task_id = uuid.uuid4()
     await db.execute(
         "INSERT INTO tasks (id, goal_anchor, source_intent_id) VALUES ($1, $2, $3)",
-        task_id, "Test goal", intent_id,
+        task_id,
+        "Test goal",
+        intent_id,
     )
     result_id = uuid.uuid4()
     await db.execute(
         "INSERT INTO results (id, task_id, content, confidence) VALUES ($1, $2, $3, $4)",
-        result_id, task_id, "Done", 0.95,
+        result_id,
+        task_id,
+        "Done",
+        0.95,
     )
     row = await db.fetchone("SELECT * FROM results WHERE id = $1", result_id)
     assert row["content"] == "Done"
@@ -151,13 +185,19 @@ async def test_results_table_exists(db):
 async def test_tasks_source_intent_fk(db):
     intent_id = uuid.uuid4()
     await db.execute(
-        "INSERT INTO intents (id, user_message, source_platform, goal_anchor) VALUES ($1, $2, $3, $4)",
-        intent_id, "FK test", "whatsapp", "FK test",
+        "INSERT INTO intents (id, user_message, source_platform, goal_anchor)"
+        " VALUES ($1, $2, $3, $4)",
+        intent_id,
+        "FK test",
+        "whatsapp",
+        "FK test",
     )
     task_id = uuid.uuid4()
     await db.execute(
         "INSERT INTO tasks (id, goal_anchor, source_intent_id) VALUES ($1, $2, $3)",
-        task_id, "FK goal", intent_id,
+        task_id,
+        "FK goal",
+        intent_id,
     )
     row = await db.fetchone("SELECT * FROM tasks WHERE id = $1", task_id)
     assert row["source_intent_id"] == intent_id
