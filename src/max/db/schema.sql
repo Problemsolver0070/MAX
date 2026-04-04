@@ -1,11 +1,25 @@
 -- Enable pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Tasks
+-- Intents (user messages as structured objects)
+CREATE TABLE IF NOT EXISTS intents (
+    id UUID PRIMARY KEY,
+    user_message TEXT NOT NULL,
+    source_platform VARCHAR(20) NOT NULL,
+    goal_anchor TEXT NOT NULL,
+    priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+    attachments JSONB NOT NULL DEFAULT '[]',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_intents_platform ON intents(source_platform);
+CREATE INDEX IF NOT EXISTS idx_intents_created ON intents(created_at DESC);
+
+-- Tasks (now with FK to intents)
 CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY,
     goal_anchor TEXT NOT NULL,
-    source_intent_id UUID NOT NULL,
+    source_intent_id UUID NOT NULL REFERENCES intents(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     quality_criteria JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -46,6 +60,40 @@ CREATE TABLE IF NOT EXISTS audit_reports (
 
 CREATE INDEX IF NOT EXISTS idx_audit_task ON audit_reports(task_id);
 
+-- Results (task outcomes)
+CREATE TABLE IF NOT EXISTS results (
+    id UUID PRIMARY KEY,
+    task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    artifacts JSONB NOT NULL DEFAULT '[]',
+    confidence REAL NOT NULL DEFAULT 1.0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_results_task ON results(task_id);
+
+-- Clarification Requests
+CREATE TABLE IF NOT EXISTS clarification_requests (
+    id UUID PRIMARY KEY,
+    task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    question TEXT NOT NULL,
+    options JSONB NOT NULL DEFAULT '[]',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clarifications_task ON clarification_requests(task_id);
+
+-- Status Updates
+CREATE TABLE IF NOT EXISTS status_updates (
+    id UUID PRIMARY KEY,
+    task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    progress REAL NOT NULL DEFAULT 0.0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_status_updates_task ON status_updates(task_id);
+
 -- Context Anchors
 CREATE TABLE IF NOT EXISTS context_anchors (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,3 +128,5 @@ CREATE TABLE IF NOT EXISTS memory_embeddings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_memory_type ON memory_embeddings(memory_type);
+CREATE INDEX IF NOT EXISTS idx_memory_embedding_hnsw
+    ON memory_embeddings USING hnsw (embedding vector_cosine_ops);

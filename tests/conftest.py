@@ -18,6 +18,7 @@ def settings(monkeypatch):
 async def db(settings):
     database = Database(dsn=settings.postgres_dsn)
     await database.connect()
+    await database.init_schema()
     yield database
     await database.close()
 

@@ -24,6 +24,18 @@ class AuditVerdict(StrEnum):
     CONDITIONAL = "conditional"
 
 
+class AuditReport(BaseModel):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    task_id: uuid.UUID
+    subtask_id: uuid.UUID
+    verdict: AuditVerdict
+    score: float = Field(ge=0.0, le=1.0)
+    goal_alignment: float = Field(ge=0.0, le=1.0)
+    confidence: float = Field(ge=0.0, le=1.0)
+    issues: list[dict[str, str]] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class SubTask(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     parent_task_id: uuid.UUID
@@ -32,7 +44,7 @@ class SubTask(BaseModel):
     assigned_tools: list[str] = Field(default_factory=list)
     context_package: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any] | None = None
-    audit_report: dict[str, Any] | None = None
+    audit_report: AuditReport | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
 
@@ -48,13 +60,13 @@ class Task(BaseModel):
     completed_at: datetime | None = None
 
 
-class AuditReport(BaseModel):
+class QualityRule(BaseModel):
+    """A quality rule learned from audits — append-only, never deleted, only superseded."""
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    task_id: uuid.UUID
-    subtask_id: uuid.UUID
-    verdict: AuditVerdict
-    score: float = Field(ge=0.0, le=1.0)
-    goal_alignment: float = Field(ge=0.0, le=1.0)
-    confidence: float = Field(ge=0.0, le=1.0)
-    issues: list[dict[str, str]] = Field(default_factory=list)
+    rule: str
+    source: str
+    category: str
+    severity: str = "normal"
+    superseded_by: uuid.UUID | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

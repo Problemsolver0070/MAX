@@ -1,3 +1,3 @@
-from max.agents.base import AgentConfig, BaseAgent
+from max.agents.base import AgentConfig, AgentContext, BaseAgent
 
-__all__ = ["AgentConfig", "BaseAgent"]
+__all__ = ["AgentConfig", "AgentContext", "BaseAgent"]

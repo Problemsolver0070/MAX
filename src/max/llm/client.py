@@ -1,15 +1,25 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
+import anthropic
 from anthropic import AsyncAnthropic
 
-from max.llm.models import LLMResponse, ModelType
+from max.llm.errors import LLMAuthError, LLMConnectionError, LLMError, LLMRateLimitError
+from max.llm.models import LLMResponse, ModelType, ToolCall
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
-    def __init__(self, api_key: str, default_model: ModelType = ModelType.OPUS):
-        self._client = AsyncAnthropic(api_key=api_key)
+    def __init__(
+        self,
+        api_key: str,
+        default_model: ModelType = ModelType.OPUS,
+        max_retries: int = 3,
+    ):
+        self._client = AsyncAnthropic(api_key=api_key, max_retries=max_retries)
         self.default_model = default_model
         self.total_input_tokens = 0
         self.total_output_tokens = 0
@@ -33,7 +43,20 @@ class LLMClient:
         if tools:
             kwargs["tools"] = tools
 
-        response = await self._client.messages.create(**kwargs)
+        try:
+            response = await self._client.messages.create(**kwargs)
+        except anthropic.RateLimitError as exc:
+            logger.warning("Rate limited by Anthropic API: %s", exc)
+            raise LLMRateLimitError(str(exc), cause=exc) from exc
+        except anthropic.APIConnectionError as exc:
+            logger.error("Failed to connect to Anthropic API: %s", exc)
+            raise LLMConnectionError(str(exc), cause=exc) from exc
+        except anthropic.AuthenticationError as exc:
+            logger.error("Anthropic API authentication failed: %s", exc)
+            raise LLMAuthError(str(exc), cause=exc) from exc
+        except anthropic.APIStatusError as exc:
+            logger.error("Anthropic API error (status %s): %s", exc.status_code, exc)
+            raise LLMError(str(exc), cause=exc) from exc
 
         text_parts = []
         tool_calls = []
@@ -41,7 +64,7 @@ class LLMClient:
             if block.type == "text":
                 text_parts.append(block.text)
             elif block.type == "tool_use":
-                tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
+                tool_calls.append(ToolCall(id=block.id, name=block.name, input=block.input))
 
         self.total_input_tokens += response.usage.input_tokens
         self.total_output_tokens += response.usage.output_tokens
