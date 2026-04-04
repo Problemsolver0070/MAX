@@ -1,4 +1,4 @@
 from max.llm.client import LLMClient
-from max.llm.models import LLMResponse, ModelType
+from max.llm.models import LLMResponse, ModelType, ToolCall
 
-__all__ = ["LLMClient", "LLMResponse", "ModelType"]
+__all__ = ["LLMClient", "LLMResponse", "ModelType", "ToolCall"]
