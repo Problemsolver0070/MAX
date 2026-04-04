@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -21,7 +21,7 @@ class Intent(BaseModel):
     goal_anchor: str
     priority: Priority = Priority.NORMAL
     attachments: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Result(BaseModel):
@@ -30,7 +30,7 @@ class Result(BaseModel):
     content: str
     artifacts: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ClarificationRequest(BaseModel):
@@ -38,7 +38,7 @@ class ClarificationRequest(BaseModel):
     task_id: uuid.UUID
     question: str
     options: list[str] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class StatusUpdate(BaseModel):
@@ -46,4 +46,4 @@ class StatusUpdate(BaseModel):
     task_id: uuid.UUID
     message: str
     progress: float = Field(ge=0.0, le=1.0, default=0.0)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

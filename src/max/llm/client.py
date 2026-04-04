@@ -41,9 +41,7 @@ class LLMClient:
             if block.type == "text":
                 text_parts.append(block.text)
             elif block.type == "tool_use":
-                tool_calls.append(
-                    {"id": block.id, "name": block.name, "input": block.input}
-                )
+                tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
 
         self.total_input_tokens += response.usage.input_tokens
         self.total_output_tokens += response.usage.output_tokens

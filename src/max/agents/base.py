@@ -57,8 +57,7 @@ class BaseAgent(ABC):
         return response
 
     @abstractmethod
-    async def run(self, input_data: dict[str, Any]) -> dict[str, Any]:
-        ...
+    async def run(self, input_data: dict[str, Any]) -> dict[str, Any]: ...
 
     def reset(self) -> None:
         self._turn_count = 0

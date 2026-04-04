@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -33,7 +33,7 @@ class SubTask(BaseModel):
     context_package: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any] | None = None
     audit_report: dict[str, Any] | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
 
 
@@ -44,7 +44,7 @@ class Task(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     subtasks: list[SubTask] = Field(default_factory=list)
     quality_criteria: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
 
 
@@ -57,4 +57,4 @@ class AuditReport(BaseModel):
     goal_alignment: float = Field(ge=0.0, le=1.0)
     confidence: float = Field(ge=0.0, le=1.0)
     issues: list[dict[str, str]] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
