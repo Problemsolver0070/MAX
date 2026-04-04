@@ -5,11 +5,15 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
+from pydantic import ValidationError
+
 from max.comm.models import (
     Attachment,
     ConversationEntry,
     DeliveryStatus,
     InboundMessage,
+    InjectionScanResult,
     InlineButton,
     MessageType,
     OutboundMessage,
@@ -160,3 +164,33 @@ class TestConversationEntry:
         )
         assert entry.source_type == "result"
         assert entry.urgency == UrgencyLevel.IMPORTANT
+
+
+class TestInjectionScanResult:
+    def test_default_trust_score(self):
+        result = InjectionScanResult()
+        assert result.trust_score == 1.0
+
+    def test_patterns_found_defaults_empty(self):
+        result = InjectionScanResult()
+        assert result.patterns_found == []
+
+    def test_is_suspicious_defaults_false(self):
+        result = InjectionScanResult()
+        assert result.is_suspicious is False
+
+    def test_trust_score_zero(self):
+        result = InjectionScanResult(trust_score=0.0)
+        assert result.trust_score == 0.0
+
+    def test_trust_score_mid(self):
+        result = InjectionScanResult(trust_score=0.5)
+        assert result.trust_score == 0.5
+
+    def test_trust_score_rejects_above_one(self):
+        with pytest.raises(ValidationError):
+            InjectionScanResult(trust_score=1.1)
+
+    def test_trust_score_rejects_below_zero(self):
+        with pytest.raises(ValidationError):
+            InjectionScanResult(trust_score=-0.1)
