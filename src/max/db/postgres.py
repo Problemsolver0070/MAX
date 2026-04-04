@@ -39,6 +39,12 @@ class Database:
         )
         logger.info("Connected to PostgreSQL")
 
+    def _get_pool(self) -> asyncpg.Pool:
+        """Return the connection pool, raising if not yet connected."""
+        if self._pool is None:
+            raise RuntimeError("Database.connect() must be called before executing queries")
+        return self._pool
+
     async def close(self) -> None:
         """Close the connection pool."""
         if self._pool:
@@ -48,23 +54,23 @@ class Database:
     async def init_schema(self) -> None:
         """Read and execute schema.sql to initialize all tables and indexes."""
         schema_sql = SCHEMA_PATH.read_text()
-        async with self._pool.acquire() as conn:
+        async with self._get_pool().acquire() as conn:
             await conn.execute(schema_sql)
         logger.info("Database schema initialized")
 
     async def execute(self, query: str, *args: Any) -> str:
         """Execute a query and return the status string (e.g. 'INSERT 0 1')."""
-        async with self._pool.acquire() as conn:
+        async with self._get_pool().acquire() as conn:
             return await conn.execute(query, *args)
 
     async def fetchone(self, query: str, *args: Any) -> dict[str, Any] | None:
         """Fetch a single row as a dict, or None if no rows match."""
-        async with self._pool.acquire() as conn:
+        async with self._get_pool().acquire() as conn:
             row = await conn.fetchrow(query, *args)
             return dict(row) if row else None
 
     async def fetchall(self, query: str, *args: Any) -> list[dict[str, Any]]:
         """Fetch all matching rows as a list of dicts."""
-        async with self._pool.acquire() as conn:
+        async with self._get_pool().acquire() as conn:
             rows = await conn.fetch(query, *args)
             return [dict(row) for row in rows]
