@@ -33,7 +33,7 @@ class WarmMemory:
     async def set(self, key: str, value: dict[str, Any], ttl_seconds: int | None = None) -> None:
         """Set a key to a JSON-serialised value, with optional TTL."""
         payload = json.dumps(value)
-        if ttl_seconds:
+        if ttl_seconds is not None:
             await self._redis.setex(self._key(key), ttl_seconds, payload)
         else:
             await self._redis.set(self._key(key), payload)
