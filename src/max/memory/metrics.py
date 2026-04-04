@@ -6,7 +6,7 @@ import json
 import logging
 import statistics
 import uuid as uuid_mod
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from max.db.postgres import Database
@@ -55,20 +55,21 @@ class MetricCollector:
         values = [float(r["value"]) for r in rows]
         sorted_values = sorted(values)
         n = len(sorted_values)
+        now = datetime.now(UTC)
 
         return MetricBaseline(
             metric_name=metric_name,
             mean=statistics.mean(values),
             median=statistics.median(values),
-            p95=sorted_values[int(n * 0.95)] if n > 1 else sorted_values[0],
-            p99=sorted_values[int(n * 0.99)] if n > 1 else sorted_values[0],
+            p95=sorted_values[min(int(n * 0.95), n - 1)],
+            p99=sorted_values[min(int(n * 0.99), n - 1)],
             stddev=statistics.stdev(values) if n > 1 else 0.0,
             sample_count=n,
-            window_start=datetime.now(UTC),
-            window_end=datetime.now(UTC),
+            window_start=now - timedelta(hours=window_hours),
+            window_end=now,
         )
 
-    def compare(
+    async def compare(
         self,
         metric_name: str,
         system_a: list[float],

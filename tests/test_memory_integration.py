@@ -62,7 +62,7 @@ async def test_full_pipeline(db: Database, warm_memory: WarmMemory):
         decay_rate=0.01,
         is_anchored=True,
     )
-    assert relevance > 1.0
+    assert relevance == 1.0  # capped at 1.0 (anchor_boost would push higher without cap)
     tier = CompactionEngine.determine_tier(relevance)
     assert tier == CompactionTier.FULL
 

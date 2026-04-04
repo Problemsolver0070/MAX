@@ -52,7 +52,11 @@ class CoordinatorStateManager:
         logger.debug("Coordinator state saved (version %d)", self._version)
 
     async def backup_to_cold(self) -> None:
-        """Backup current state to PostgreSQL quality_ledger."""
+        """Backup current state to PostgreSQL quality_ledger.
+
+        WarmMemory.get() returns a deserialized dict; json.dumps() re-serializes
+        it for the JSONB column in PostgreSQL.
+        """
         raw = await self._warm.get(STATE_KEY)
         if raw is None:
             return
