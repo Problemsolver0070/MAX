@@ -43,6 +43,23 @@ class Settings(BaseSettings):
     memory_embedding_dimension: int = 1024
     memory_anchor_re_evaluation_interval_hours: int = 6
 
+    # Telegram
+    telegram_bot_token: str = ""
+
+    # Communication behavior
+    comm_batch_interval_seconds: int = 30
+    comm_max_batch_size: int = 10
+    comm_context_window_size: int = 20
+    comm_media_dir: str = "/tmp/max/media"
+
+    # Webhook (production)
+    comm_webhook_enabled: bool = False
+    comm_webhook_host: str = "0.0.0.0"
+    comm_webhook_port: int = 8443
+    comm_webhook_path: str = "/webhook/telegram"
+    comm_webhook_url: str = ""
+    comm_webhook_secret: str = ""
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
