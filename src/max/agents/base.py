@@ -21,12 +21,35 @@ class AgentConfig(BaseModel):
     tools: list[str] = Field(default_factory=list)
 
 
+class AgentContext:
+    """Bundles shared infrastructure dependencies for an agent."""
+
+    __slots__ = ("bus", "db", "warm_memory")
+
+    def __init__(self, bus: Any = None, db: Any = None, warm_memory: Any = None) -> None:
+        self.bus = bus
+        self.db = db
+        self.warm_memory = warm_memory
+
+
 class BaseAgent(ABC):
-    def __init__(self, config: AgentConfig, llm: LLMClient):
+    def __init__(
+        self,
+        config: AgentConfig,
+        llm: LLMClient,
+        context: AgentContext | None = None,
+    ):
         self.config = config
         self.llm = llm
+        self.context = context or AgentContext()
         self.agent_id = str(uuid.uuid4())
         self._turn_count = 0
+
+    async def on_start(self) -> None:
+        """Called when the agent starts. Override in subclasses."""
+
+    async def on_stop(self) -> None:
+        """Called when the agent stops. Override in subclasses."""
 
     async def think(
         self,
@@ -35,11 +58,16 @@ class BaseAgent(ABC):
         model: ModelType | None = None,
         tools: list[dict[str, Any]] | None = None,
     ) -> LLMResponse:
+        if self._turn_count >= self.config.max_turns:
+            raise RuntimeError(
+                f"Agent '{self.config.name}' exceeded max_turns ({self.config.max_turns})"
+            )
         self._turn_count += 1
         logger.debug(
-            "[%s] Turn %d: sending %d messages",
+            "[%s] Turn %d/%d: sending %d messages",
             self.config.name,
             self._turn_count,
+            self.config.max_turns,
             len(messages),
         )
         response = await self.llm.complete(
