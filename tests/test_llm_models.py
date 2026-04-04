@@ -25,6 +25,21 @@ def test_llm_response_with_typed_tool_calls():
     assert resp.tool_calls[1].id == "toolu_02"
 
 
+def test_model_type_opus():
+    assert ModelType.OPUS.model_id == "claude-opus-4-6"
+    assert ModelType.OPUS.max_tokens == 32768
+
+
+def test_model_type_sonnet():
+    assert ModelType.SONNET.model_id == "claude-sonnet-4-6"
+    assert ModelType.SONNET.max_tokens == 16384
+
+
+def test_model_type_value():
+    assert ModelType.OPUS.value == ("opus", "claude-opus-4-6", 32768)
+    assert ModelType.SONNET.value == ("sonnet", "claude-sonnet-4-6", 16384)
+
+
 def test_llm_response_no_tool_calls():
     resp = LLMResponse(
         text="Hello",
