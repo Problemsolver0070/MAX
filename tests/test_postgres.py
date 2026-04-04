@@ -10,6 +10,7 @@ async def db():
     database = Database(dsn="postgresql://max:max_dev_password@localhost:5432/max")
     await database.connect()
     # Drop old tables so schema changes (FK, new tables) take effect
+    await database.execute("DROP TABLE IF EXISTS conversation_messages CASCADE")
     await database.execute("DROP TABLE IF EXISTS graph_edges CASCADE")
     await database.execute("DROP TABLE IF EXISTS graph_nodes CASCADE")
     await database.execute("DROP TABLE IF EXISTS compaction_log CASCADE")
@@ -28,6 +29,7 @@ async def db():
     await database.init_schema()
     yield database
     # Clean test data in FK-safe order
+    await database.execute("DELETE FROM conversation_messages")
     await database.execute("DELETE FROM graph_edges")
     await database.execute("DELETE FROM graph_nodes")
     await database.execute("DELETE FROM compaction_log")
@@ -318,3 +320,36 @@ async def test_graph_edge_insert_with_fk(db):
     row = await db.fetchone("SELECT * FROM graph_edges WHERE id = $1", edge_id)
     assert row is not None
     assert float(row["weight"]) == pytest.approx(0.9)
+
+
+@pytest.mark.asyncio
+async def test_conversation_messages_table_exists(db):
+    """Verify Phase 3 conversation_messages table is created."""
+    tables = await db.fetchall("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+    table_names = {row["tablename"] for row in tables}
+    assert "conversation_messages" in table_names
+
+
+@pytest.mark.asyncio
+async def test_conversation_messages_insert_and_fetch(db):
+    """Insert and fetch a conversation message."""
+    import uuid
+
+    msg_id = uuid.uuid4()
+    await db.execute(
+        "INSERT INTO conversation_messages "
+        "(id, direction, platform, platform_message_id, message_type, content, delivery_status) "
+        "VALUES ($1, $2, $3, $4, $5, $6, $7)",
+        msg_id,
+        "inbound",
+        "telegram",
+        42,
+        "text",
+        "Hello Max",
+        "pending",
+    )
+    row = await db.fetchone("SELECT * FROM conversation_messages WHERE id = $1", msg_id)
+    assert row is not None
+    assert row["direction"] == "inbound"
+    assert row["content"] == "Hello Max"
+    assert row["platform_message_id"] == 42
