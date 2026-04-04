@@ -39,3 +39,14 @@ def test_postgres_dsn(monkeypatch):
     monkeypatch.setenv("POSTGRES_DB", "max")
     settings = Settings()
     assert settings.postgres_dsn == "postgresql://max:secret@localhost:5432/max"
+
+
+def test_postgres_dsn_special_chars(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key")
+    monkeypatch.setenv("POSTGRES_USER", "max")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "p@ss/w#rd")
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("POSTGRES_DB", "max")
+    settings = Settings()
+    assert settings.postgres_dsn == "postgresql://max:p%40ss%2Fw%23rd@localhost:5432/max"

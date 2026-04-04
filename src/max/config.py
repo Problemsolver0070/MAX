@@ -1,5 +1,7 @@
 """Centralized configuration for Max, loaded from environment variables and .env file."""
 
+from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings
 
 
@@ -35,7 +37,7 @@ class Settings(BaseSettings):
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
         return (
-            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"postgresql://{self.postgres_user}:{quote_plus(self.postgres_password)}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
