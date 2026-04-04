@@ -89,3 +89,81 @@ async def test_unsubscribe(bus):
 
     await bus.stop_listening()
     assert len(received) == 1
+
+
+@pytest.mark.asyncio
+async def test_multi_handler_fanout(bus):
+    received_a = []
+    received_b = []
+
+    async def handler_a(channel: str, data: dict):
+        received_a.append(data)
+
+    async def handler_b(channel: str, data: dict):
+        received_b.append(data)
+
+    await bus.subscribe("events.task", handler_a)
+    await bus.subscribe("events.task", handler_b)
+    await bus.start_listening()
+    await asyncio.sleep(0.1)
+
+    await bus.publish("events.task", {"type": "task_created", "id": "1"})
+    await asyncio.sleep(0.3)
+
+    await bus.stop_listening()
+    assert len(received_a) == 1
+    assert len(received_b) == 1
+    assert received_a[0]["id"] == "1"
+    assert received_b[0]["id"] == "1"
+
+
+@pytest.mark.asyncio
+async def test_unsubscribe_specific_handler(bus):
+    received_a = []
+    received_b = []
+
+    async def handler_a(channel: str, data: dict):
+        received_a.append(data)
+
+    async def handler_b(channel: str, data: dict):
+        received_b.append(data)
+
+    await bus.subscribe("events.unsub", handler_a)
+    await bus.subscribe("events.unsub", handler_b)
+    await bus.start_listening()
+    await asyncio.sleep(0.1)
+
+    await bus.publish("events.unsub", {"n": 1})
+    await asyncio.sleep(0.2)
+
+    await bus.unsubscribe("events.unsub", handler_a)
+    await bus.publish("events.unsub", {"n": 2})
+    await asyncio.sleep(0.2)
+
+    await bus.stop_listening()
+    assert len(received_a) == 1
+    assert received_a[0]["n"] == 1
+    assert len(received_b) == 2
+
+
+@pytest.mark.asyncio
+async def test_handler_error_does_not_block_others(bus):
+    received = []
+
+    async def bad_handler(channel: str, data: dict):
+        raise ValueError("I'm broken")
+
+    async def good_handler(channel: str, data: dict):
+        received.append(data)
+
+    await bus.subscribe("events.err", bad_handler)
+    await bus.subscribe("events.err", good_handler)
+    await bus.start_listening()
+    await asyncio.sleep(0.1)
+
+    await bus.publish("events.err", {"test": True})
+    await asyncio.sleep(0.3)
+
+    await bus.stop_listening()
+    assert len(received) == 1
+    assert received[0]["test"] is True

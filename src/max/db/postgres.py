@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +46,21 @@ class Database:
         if self._pool is None:
             raise RuntimeError("Database.connect() must be called before executing queries")
         return self._pool
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[asyncpg.Connection]:
+        """Acquire a connection and run queries inside a transaction.
+
+        Usage::
+
+            async with db.transaction() as conn:
+                await conn.execute("INSERT ...")
+                await conn.execute("UPDATE ...")
+            # auto-committed on clean exit, rolled back on exception
+        """
+        async with self._get_pool().acquire() as conn:
+            async with conn.transaction():
+                yield conn
 
     async def close(self) -> None:
         """Close the connection pool."""

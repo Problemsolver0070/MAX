@@ -8,6 +8,7 @@ from max.models.messages import (
 from max.models.tasks import (
     AuditReport,
     AuditVerdict,
+    QualityRule,
     SubTask,
     Task,
     TaskStatus,
@@ -19,6 +20,7 @@ __all__ = [
     "ClarificationRequest",
     "Intent",
     "Priority",
+    "QualityRule",
     "Result",
     "StatusUpdate",
     "SubTask",
