@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     max_owner_telegram_id: str = ""
     max_owner_whatsapp_id: str = ""
 
+    # Voyage AI (embeddings)
+    voyage_api_key: str = ""
+
+    # Memory system
+    memory_compaction_interval_seconds: int = 60
+    memory_warm_budget_tokens: int = 100_000
+    memory_graph_cache_max_nodes: int = 500
+    memory_embedding_dimension: int = 1024
+    memory_anchor_re_evaluation_interval_hours: int = 6
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
