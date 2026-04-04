@@ -5,6 +5,9 @@ from max.bus.message_bus import MessageBus
 from max.config import Settings
 from max.db.postgres import Database
 from max.db.redis_store import WarmMemory
+from max.memory.anchors import AnchorManager
+from max.memory.graph import MemoryGraph
+from max.memory.metrics import MetricCollector
 
 
 @pytest.fixture
@@ -42,3 +45,18 @@ async def bus(redis_client):
     b = MessageBus(redis_client)
     yield b
     await b.close()
+
+
+@pytest.fixture
+async def graph(db):
+    return MemoryGraph(db)
+
+
+@pytest.fixture
+async def anchor_mgr(db):
+    return AnchorManager(db)
+
+
+@pytest.fixture
+async def metric_collector(db):
+    return MetricCollector(db)

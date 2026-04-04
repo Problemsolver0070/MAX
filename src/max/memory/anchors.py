@@ -93,9 +93,7 @@ class AnchorManager:
             anchor_id,
         )
 
-    async def transition(
-        self, anchor_id: uuid_mod.UUID, new_state: AnchorLifecycleState
-    ) -> None:
+    async def transition(self, anchor_id: uuid_mod.UUID, new_state: AnchorLifecycleState) -> None:
         anchor = await self.get(anchor_id)
         if anchor is None:
             raise ValueError(f"Anchor {anchor_id} not found")
@@ -130,16 +128,14 @@ class AnchorManager:
         )
         # Update new anchor's version and parent
         await self._db.execute(
-            "UPDATE context_anchors SET version = $1, parent_anchor_id = $2 "
-            "WHERE id = $3",
+            "UPDATE context_anchors SET version = $1, parent_anchor_id = $2 WHERE id = $3",
             old.version + 1,
             old.id,
             new_anchor.id,
         )
         # Mark old as superseded
         await self._db.execute(
-            "UPDATE context_anchors SET lifecycle_state = $1, superseded_by = $2 "
-            "WHERE id = $3",
+            "UPDATE context_anchors SET lifecycle_state = $1, superseded_by = $2 WHERE id = $3",
             AnchorLifecycleState.SUPERSEDED.value,
             new_anchor.id,
             old.id,
@@ -147,18 +143,14 @@ class AnchorManager:
         # Return fresh copy
         return await self.get(new_anchor.id)
 
-    async def update_relevance(
-        self, anchor_id: uuid_mod.UUID, score: float
-    ) -> None:
+    async def update_relevance(self, anchor_id: uuid_mod.UUID, score: float) -> None:
         await self._db.execute(
             "UPDATE context_anchors SET relevance_score = $1 WHERE id = $2",
             score,
             anchor_id,
         )
 
-    async def find_stale_candidates(
-        self, threshold: float = 0.3
-    ) -> list[ContextAnchor]:
+    async def find_stale_candidates(self, threshold: float = 0.3) -> list[ContextAnchor]:
         rows = await self._db.fetchall(
             "SELECT id, content, anchor_type, source_task_id, metadata, "
             "lifecycle_state, relevance_score, last_accessed, access_count, "
