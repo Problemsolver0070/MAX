@@ -1,8 +1,8 @@
 # Max — Project Status
 
 > **Last updated:** 2026-04-04
-> **Current phase:** Phase 2 Complete + Merged, Phase 3 not started
-> **Branch:** `master` (Phase 1 + Phase 2 merged)
+> **Current phase:** Phase 3 Complete + Merged, Phase 4 not started
+> **Branch:** `master` (Phase 1 + Phase 2 + Phase 3 merged)
 
 ---
 
@@ -12,9 +12,9 @@
 
 1. Read this file first
 2. Check `docs/superpowers/specs/2026-04-04-max-design.md` for the full design spec
-3. Check `docs/superpowers/specs/2026-04-04-max-phase2-memory-system.md` for Phase 2 design spec
-4. Check `docs/superpowers/plans/2026-04-04-max-phase2-memory-system.md` for Phase 2 plan (completed)
-5. **Next step:** Brainstorm + write Phase 3 (Communication Layer) plan, then execute
+3. Check `docs/superpowers/specs/2026-04-04-max-phase3-communication-layer.md` for Phase 3 design spec
+4. Check `docs/superpowers/plans/2026-04-04-max-phase3-communication-layer.md` for Phase 3 plan (completed)
+5. **Next step:** Brainstorm + write Phase 4 (Command Chain) spec and plan, then execute
 
 ---
 
@@ -23,9 +23,11 @@
 ### Design Documents
 - `docs/superpowers/specs/2026-04-04-max-design.md` — Full approved design spec (10 sections)
 - `docs/superpowers/specs/2026-04-04-max-phase2-memory-system.md` — Phase 2 memory system design spec
+- `docs/superpowers/specs/2026-04-04-max-phase3-communication-layer.md` — Phase 3 communication layer design spec
 - `docs/superpowers/plans/2026-04-04-max-phase1-core-foundation.md` — Phase 1 plan (completed)
 - `docs/superpowers/plans/2026-04-04-max-phase1-critical-fixes.md` — Phase 1 fixes plan (completed)
 - `docs/superpowers/plans/2026-04-04-max-phase2-memory-system.md` — Phase 2 plan (13 tasks, completed)
+- `docs/superpowers/plans/2026-04-04-max-phase3-communication-layer.md` — Phase 3 plan (11 tasks, completed)
 - `RESEARCH.md` — OpenClaw research
 
 ### Phase 1: Core Foundation (Complete + Merged)
@@ -73,14 +75,45 @@ src/max/db/migrations/
 
 **173 tests passing, 94% coverage, lint clean.**
 
-### Database Schema (11 tables)
+### Phase 3: Communication Layer (Complete + Merged)
+
+```
+src/max/comm/
+├── __init__.py               # Package exports (14 public symbols)
+├── models.py                 # 3 StrEnum + 6 Pydantic v2 models (InboundMessage, OutboundMessage, etc.)
+├── injection_scanner.py      # PromptInjectionScanner: pattern-based trust scoring (0.0-1.0)
+├── formatter.py              # OutboundFormatter: 5 static methods (result, status, clarification, batch, error)
+├── telegram_adapter.py       # TelegramAdapter + OwnerOnlyMiddleware (aiogram 3.x)
+├── communicator.py           # CommunicatorAgent: LLM intent parsing, commands, batching, urgency
+└── router.py                 # MessageRouter: lifecycle, persistence, callback routing
+
+src/max/db/migrations/
+├── 002_memory_system.sql
+└── 003_communication.sql     # conversation_messages table
+```
+
+**247 tests passing (74 new), lint/format clean.**
+
+Key features:
+- Three-layer adapter pattern: TelegramAdapter → MessageRouter → CommunicatorAgent
+- LLM-powered intent parsing with structured JSON output
+- Urgency classification: SILENT/NORMAL/IMPORTANT/CRITICAL
+- Update batching for SILENT messages with periodic flush
+- Prompt injection scanning with pattern-based trust scoring
+- OwnerOnlyMiddleware drops all non-owner Telegram users
+- Outbound formatter with HTML formatting and inline keyboards
+- Conversation persistence in PostgreSQL
+
+### Database Schema (12 tables)
 Phase 1: tasks, subtasks, audit_reports, intents, results, status_updates, clarification_requests, context_anchors, quality_ledger, memory_embeddings
 Phase 2: graph_nodes, graph_edges, compaction_log, performance_metrics, shelved_improvements
 Phase 2 ALTERs: context_anchors (9 new lifecycle/permanence columns), memory_embeddings (8 new columns + FTS)
+Phase 3: conversation_messages
 
 ### Config (env vars)
 Phase 1: ANTHROPIC_API_KEY, POSTGRES_*, REDIS_*
 Phase 2: VOYAGE_API_KEY, MEMORY_COMPACTION_INTERVAL_SECONDS(60), MEMORY_WARM_BUDGET_TOKENS(100000), MEMORY_GRAPH_CACHE_MAX_NODES(500), MEMORY_EMBEDDING_DIMENSION(1024), MEMORY_ANCHOR_RE_EVALUATION_INTERVAL_HOURS(6)
+Phase 3: TELEGRAM_BOT_TOKEN, COMM_BATCH_INTERVAL_SECONDS(30), COMM_MAX_BATCH_SIZE(10), COMM_CONTEXT_WINDOW_SIZE(20), COMM_MEDIA_DIR, COMM_WEBHOOK_ENABLED(False), COMM_WEBHOOK_HOST/PORT/PATH/URL/SECRET
 
 ---
 
@@ -105,14 +138,34 @@ Phase 2: VOYAGE_API_KEY, MEMORY_COMPACTION_INTERVAL_SECONDS(60), MEMORY_WARM_BUD
 
 ---
 
+## Phase 3 Code Review — Key Fixes Applied
+
+4 findings fixed from final code review (commit `895b45f`):
+
+### Critical (2/2 fixed):
+1. ~~Unbounded retry recursion in send()~~ — ✅ Added `_retries` counter with max 3
+2. ~~Webhook URL built from bind address 0.0.0.0~~ — ✅ Added explicit `webhook_url` parameter
+
+### Should-Fix (2/2 fixed):
+3. ~~No periodic flush for batched SILENT messages~~ — ✅ Added `_periodic_flush()` asyncio task
+4. ~~Injection warning in user prompt (attackable)~~ — ✅ Moved to system prompt
+
+### Deferred to Phase 4+:
+- S2: Callback missing option text + edit_message
+- S3: scan_result not persisted to DB
+- S4: CommunicationState enum for connection lifecycle
+- S6: _get_task_goal DB coupling in CommunicatorAgent
+
+---
+
 ## Phase Roadmap
 
 | Phase | Name | Status | Next Action |
 |-------|------|--------|-------------|
 | 1 | Core Foundation | ✅ Complete + Merged | All 12 review findings fixed |
 | 2 | Memory System | ✅ Complete + Merged | All 14 review findings addressed |
-| 3 | Communication Layer | Not started | Brainstorm → write plan → implement |
-| 4 | Command Chain | Not started | Depends on Phase 3 |
+| 3 | Communication Layer | ✅ Complete + Merged | 247 tests, 7 modules, 4 review fixes |
+| 4 | Command Chain | Not started | Brainstorm → write plan → implement |
 | 5 | Quality Gate | Not started | Depends on Phase 4 |
 | 6 | Tool Arsenal | Not started | Depends on Phase 4 |
 | 7 | Evolution System | Not started | Depends on all above |
