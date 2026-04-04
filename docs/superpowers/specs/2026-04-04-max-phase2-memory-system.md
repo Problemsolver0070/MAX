@@ -129,7 +129,7 @@ Active → Superseded → Archived (with link to replacement)
 Anchor v1 (superseded_by: v2) → Anchor v2 (superseded_by: v3) → Anchor v3 (active)
 ```
 
-**Periodic Re-evaluation:** An Opus call periodically reviews stale anchors against recent context. The evaluator receives the anchor content, recent relevant context, and asks: "Is this anchor still accurate? Still relevant? Has the user's behavior contradicted it?" This catches drift that no single event would trigger.
+**Periodic Re-evaluation:** An Opus call reviews stale anchors against recent context every 6 hours (configurable via `memory_anchor_re_evaluation_interval_hours`). The evaluator receives the anchor content, recent relevant context, and asks: "Is this anchor still accurate? Still relevant? Has the user's behavior contradicted it?" This catches drift that no single event would trigger. Re-evaluations are batched — all stale anchors are reviewed in a single Opus call to minimize API usage.
 
 **Usage Tracking:** Every time an anchor is retrieved for context packaging, that access is logged. Anchors that are never retrieved over a sustained period are candidates for staleness review — they're "important" but apparently not useful.
 
@@ -874,6 +874,7 @@ CREATE TRIGGER trg_anchor_search_vector
 -- Migration: change embedding dimension from 1536 to 1024
 ALTER TABLE memory_embeddings ALTER COLUMN embedding TYPE vector(1024);
 ```
+Note: This migration is safe because Phase 1 created the table but no real embeddings have been stored yet. If embeddings existed, they would need to be re-embedded with the new model.
 
 ---
 
@@ -1071,6 +1072,7 @@ memory_compaction_interval_seconds: int = 60
 memory_warm_budget_tokens: int = 100_000
 memory_graph_cache_max_nodes: int = 500
 memory_embedding_dimension: int = 1024
+memory_anchor_re_evaluation_interval_hours: int = 6
 ```
 
 ---
