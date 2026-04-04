@@ -37,7 +37,16 @@ async def test_full_pipeline_smoke(db, warm_memory, bus):
         source_intent_id=intent.id,
     )
 
-    # 3. Persist task to PostgreSQL
+    # 3. Persist intent then task to PostgreSQL (FK requires intent first)
+    await db.execute(
+        "INSERT INTO intents (id, user_message, source_platform, goal_anchor, priority)"
+        " VALUES ($1, $2, $3, $4, $5)",
+        intent.id,
+        intent.user_message,
+        intent.source_platform,
+        intent.goal_anchor,
+        intent.priority.value,
+    )
     await db.execute(
         "INSERT INTO tasks (id, goal_anchor, source_intent_id, status) VALUES ($1, $2, $3, $4)",
         task.id,
