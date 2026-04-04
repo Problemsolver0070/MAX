@@ -72,6 +72,7 @@ class MessageRouter:
         await self._communicator.start()
         if self._settings.comm_webhook_enabled:
             await self._adapter.start_webhook(
+                webhook_url=self._settings.comm_webhook_url,
                 host=self._settings.comm_webhook_host,
                 port=self._settings.comm_webhook_port,
                 path=self._settings.comm_webhook_path,
