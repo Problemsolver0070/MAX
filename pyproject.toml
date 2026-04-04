@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.7.0",
     "python-dotenv>=1.0.0",
     "voyageai>=0.3.0",
+    "aiogram>=3.27.0",
 ]
 
 [project.optional-dependencies]
