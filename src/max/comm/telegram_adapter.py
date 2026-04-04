@@ -87,13 +87,15 @@ class TelegramAdapter:
         logger.info("Starting Telegram polling...")
         await self._dp.start_polling(self._bot)
 
-    async def start_webhook(self, host: str, port: int, path: str, secret: str) -> None:
+    async def start_webhook(
+        self, webhook_url: str, host: str, port: int, path: str, secret: str
+    ) -> None:
         """Start receiving updates via webhook."""
         await self._bot.set_webhook(
-            url=f"https://{host}{path}",
+            url=webhook_url,
             secret_token=secret,
         )
-        logger.info("Webhook set: %s%s", host, path)
+        logger.info("Webhook set: %s", webhook_url)
 
     async def stop(self) -> None:
         """Stop the adapter and close the bot session."""
@@ -101,7 +103,7 @@ class TelegramAdapter:
         await self._bot.session.close()
         logger.info("Telegram adapter stopped")
 
-    async def send(self, message: OutboundMessage) -> int | None:
+    async def send(self, message: OutboundMessage, _retries: int = 0) -> int | None:
         """Send an outbound message. Returns the platform message_id."""
         try:
             reply_markup = self._build_keyboard(message.inline_keyboard)
@@ -142,9 +144,14 @@ class TelegramAdapter:
                 )
             return sent.message_id
         except TelegramRetryAfter as exc:
-            logger.warning("Rate limited, retrying in %ds", exc.retry_after)
+            if _retries >= 3:
+                logger.error("Rate limit retry exhausted for chat %d", message.chat_id)
+                return None
+            logger.warning(
+                "Rate limited, retrying in %ds (attempt %d)", exc.retry_after, _retries + 1
+            )
             await asyncio.sleep(exc.retry_after)
-            return await self.send(message)
+            return await self.send(message, _retries=_retries + 1)
         except TelegramForbiddenError:
             logger.warning("Bot blocked by user (chat_id=%d)", message.chat_id)
             return None
