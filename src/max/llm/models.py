@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -24,10 +25,18 @@ class ModelType(Enum):
         }[self]
 
 
+class ToolCall(BaseModel):
+    """A structured tool call returned by the LLM."""
+
+    id: str
+    name: str
+    input: dict[str, Any]
+
+
 class LLMResponse(BaseModel):
     text: str
     input_tokens: int
     output_tokens: int
     model: str
     stop_reason: str
-    tool_calls: list[dict] | None = None
+    tool_calls: list[ToolCall] | None = None
