@@ -1,1 +1,14 @@
-.worktrees/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.eggs/
+.env
+.venv/
+*.db
+*.sqlite3
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.superpowers/
