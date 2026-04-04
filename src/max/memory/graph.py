@@ -267,13 +267,14 @@ class MemoryGraph:
         while queue and depth < max_depth:
             for _ in range(level_size):
                 current_id, path_edges = queue.popleft()
-                edges = await self._get_edges(current_id, "outbound", 0.0, None)
+                edges = await self._get_edges(current_id, "both", 0.0, None)
                 for edge in edges:
-                    if edge.target_id in visited:
+                    neighbor_id = edge.target_id if edge.source_id == current_id else edge.source_id
+                    if neighbor_id in visited:
                         continue
-                    visited.add(edge.target_id)
+                    visited.add(neighbor_id)
                     new_path = [*path_edges, edge]
-                    if edge.target_id == target:
+                    if neighbor_id == target:
                         terminal = await self.get_node(target)
                         if terminal is None:
                             return None
@@ -282,7 +283,7 @@ class MemoryGraph:
                             terminal_node=terminal,
                             score=self._score_path(new_path, len(new_path)),
                         )
-                    queue.append((edge.target_id, new_path))
+                    queue.append((neighbor_id, new_path))
             depth += 1
             level_size = len(queue)
         return None
@@ -332,7 +333,10 @@ class MemoryGraph:
             decay_factor,
             cutoff_hours,
         )
-        count = int(result.split()[-1]) if result else 0
+        try:
+            count = int(result.split()[-1]) if result else 0
+        except (ValueError, IndexError):
+            count = 0
         logger.info("Decayed %d edge weights", count)
         return count
 
@@ -346,6 +350,11 @@ class MemoryGraph:
             "UPDATE graph_edges SET target_id = $1 WHERE target_id = $2",
             keep,
             remove,
+        )
+        # Remove self-loops created by merging
+        await self._db.execute(
+            "DELETE FROM graph_edges WHERE source_id = $1 AND target_id = $1",
+            keep,
         )
         await self.remove_node(remove)
 

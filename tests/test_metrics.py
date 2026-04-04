@@ -42,8 +42,8 @@ class TestBaseline:
 
 
 class TestComparison:
-    def test_compare_a_better(self, metrics: MetricCollector):
-        result = metrics.compare(
+    async def test_compare_a_better(self, metrics: MetricCollector):
+        result = await metrics.compare(
             "latency",
             system_a=[10.0, 11.0, 12.0],
             system_b=[15.0, 16.0, 17.0],
@@ -52,8 +52,8 @@ class TestComparison:
         assert result.verdict == "a_better"
         assert result.is_significant is True
 
-    def test_compare_b_better(self, metrics: MetricCollector):
-        result = metrics.compare(
+    async def test_compare_b_better(self, metrics: MetricCollector):
+        result = await metrics.compare(
             "accuracy",
             system_a=[0.80, 0.82, 0.81],
             system_b=[0.90, 0.91, 0.92],
@@ -61,8 +61,8 @@ class TestComparison:
         )
         assert result.verdict == "b_better"
 
-    def test_compare_no_difference(self, metrics: MetricCollector):
-        result = metrics.compare(
+    async def test_compare_no_difference(self, metrics: MetricCollector):
+        result = await metrics.compare(
             "metric",
             system_a=[10.0, 10.1, 10.0],
             system_b=[10.0, 10.1, 10.0],
@@ -70,7 +70,7 @@ class TestComparison:
         )
         assert result.verdict == "no_difference"
 
-    def test_compare_empty_lists(self, metrics: MetricCollector):
-        result = metrics.compare("metric", [], [], lower_is_better=True)
+    async def test_compare_empty_lists(self, metrics: MetricCollector):
+        result = await metrics.compare("metric", [], [], lower_is_better=True)
         assert result.verdict == "no_difference"
         assert result.is_significant is False

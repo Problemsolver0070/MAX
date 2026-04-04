@@ -58,7 +58,7 @@ class ContextAnchor(BaseModel):
     source_task_id: uuid.UUID | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     lifecycle_state: AnchorLifecycleState = AnchorLifecycleState.ACTIVE
-    relevance_score: float = Field(default=1.0, ge=0.0, le=10.0)
+    relevance_score: float = Field(default=1.0, ge=0.0, le=1.0)
     last_accessed: datetime = Field(default_factory=lambda: datetime.now(UTC))
     access_count: int = 0
     decay_rate: float = 0.001
@@ -109,6 +109,10 @@ class GraphStats(BaseModel):
     total_edges: int
     orphan_nodes: int
     avg_edge_weight: float
+
+
+# Spec-compliant alias — the spec names this GraphHealthStatus
+GraphHealthStatus = GraphStats
 
 
 # ── Retrieval ────────────────────────────────────────────────────────────────

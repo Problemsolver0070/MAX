@@ -37,7 +37,7 @@ class CompactionEngine:
         else:
             usage_factor = 1.0
         anchor_boost = 10.0 if is_anchored else 1.0
-        return base_relevance * recency_factor * usage_factor * anchor_boost
+        return min(1.0, base_relevance * recency_factor * usage_factor * anchor_boost)
 
     @staticmethod
     def determine_tier(relevance: float) -> CompactionTier:
