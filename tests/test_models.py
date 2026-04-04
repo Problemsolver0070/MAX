@@ -1,7 +1,7 @@
 import uuid
 
 from max.models.messages import ClarificationRequest, Intent, Priority, Result, StatusUpdate
-from max.models.tasks import AuditReport, AuditVerdict, SubTask, Task, TaskStatus
+from max.models.tasks import AuditReport, AuditVerdict, QualityRule, SubTask, Task, TaskStatus
 
 
 def test_intent_creation():
@@ -99,3 +99,54 @@ def test_audit_report_with_issues():
     assert report.verdict == AuditVerdict.FAIL
     assert len(report.issues) == 1
     assert report.issues[0]["severity"] == "critical"
+
+
+def test_subtask_with_typed_audit_report():
+    task_id = uuid.uuid4()
+    subtask_id = uuid.uuid4()
+    report = AuditReport(
+        task_id=task_id,
+        subtask_id=subtask_id,
+        verdict=AuditVerdict.PASS,
+        score=0.9,
+        goal_alignment=0.95,
+        confidence=0.88,
+    )
+    subtask = SubTask(
+        parent_task_id=task_id,
+        description="Do the thing",
+        audit_report=report,
+    )
+    assert isinstance(subtask.audit_report, AuditReport)
+    assert subtask.audit_report.verdict == AuditVerdict.PASS
+    assert subtask.audit_report.score == 0.9
+
+
+def test_quality_rule_creation():
+    rule = QualityRule(
+        rule="All API responses must include error codes",
+        source="audit-2026-04-04",
+        category="api",
+        severity="critical",
+    )
+    assert rule.rule == "All API responses must include error codes"
+    assert rule.source == "audit-2026-04-04"
+    assert rule.category == "api"
+    assert rule.severity == "critical"
+    assert rule.id is not None
+    assert rule.superseded_by is None
+
+
+def test_quality_rule_superseded():
+    old_rule = QualityRule(
+        rule="Old rule",
+        source="audit-old",
+        category="general",
+    )
+    new_rule = QualityRule(
+        rule="New rule superseding old",
+        source="audit-new",
+        category="general",
+    )
+    old_rule_updated = old_rule.model_copy(update={"superseded_by": new_rule.id})
+    assert old_rule_updated.superseded_by == new_rule.id
