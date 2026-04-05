@@ -166,6 +166,11 @@ _HANDLER_MAP = {
     "email.read": handle_email_read,
     "email.search": handle_email_search,
     "email.list_folders": handle_email_list_folders,
+    "media.image_resize": handle_media_image_resize,
+    "media.image_convert": handle_media_image_convert,
+    "media.image_info": handle_media_image_info,
+    "media.audio_transcribe": handle_media_audio_transcribe,
+    "media.video_info": handle_media_video_info,
 }
 
 ALL_TOOL_DEFINITIONS = (
@@ -177,6 +182,7 @@ ALL_TOOL_DEFINITIONS = (
     + FILE_TOOLS
     + SHELL_TOOLS
     + GIT_TOOLS
+    + MEDIA_TOOLS
     + WEB_TOOLS
     + SCRAPING_TOOLS
     + PROCESS_TOOLS
