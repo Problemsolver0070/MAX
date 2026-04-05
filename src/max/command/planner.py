@@ -170,9 +170,7 @@ class PlannerAgent(BaseAgent):
                 {
                     "id": str(uuid_mod.uuid4()),
                     "task_id": str(task_id),
-                    "question": parsed.get(
-                        "clarification_question", "Could you clarify?"
-                    ),
+                    "question": parsed.get("clarification_question", "Could you clarify?"),
                     "options": parsed.get("clarification_options", []),
                 },
             )

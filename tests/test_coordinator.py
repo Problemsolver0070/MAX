@@ -37,9 +37,13 @@ def _make_coordinator(llm, bus, db, warm, settings):
         model=ModelType.OPUS,
     )
     state_mgr = AsyncMock()
-    state_mgr.load = AsyncMock(return_value=MagicMock(
-        active_tasks=[], task_queue=[], model_dump=MagicMock(return_value={}),
-    ))
+    state_mgr.load = AsyncMock(
+        return_value=MagicMock(
+            active_tasks=[],
+            task_queue=[],
+            model_dump=MagicMock(return_value={}),
+        )
+    )
     state_mgr.save = AsyncMock()
     task_store = AsyncMock()
     return CoordinatorAgent(
@@ -65,19 +69,27 @@ class TestCoordinatorClassification:
         db = AsyncMock()
         warm = AsyncMock()
 
-        llm.complete = AsyncMock(return_value=_make_llm_response({
-            "action": "create_task",
-            "goal_anchor": "Deploy the app",
-            "priority": "high",
-            "quality_criteria": {},
-            "reasoning": "New deployment request",
-        }))
+        llm.complete = AsyncMock(
+            return_value=_make_llm_response(
+                {
+                    "action": "create_task",
+                    "goal_anchor": "Deploy the app",
+                    "priority": "high",
+                    "quality_criteria": {},
+                    "reasoning": "New deployment request",
+                }
+            )
+        )
 
         coord = _make_coordinator(llm, bus, db, warm, settings)
-        coord._task_store.create_task = AsyncMock(return_value={
-            "id": uuid.uuid4(), "goal_anchor": "Deploy the app",
-            "status": "pending", "priority": "high",
-        })
+        coord._task_store.create_task = AsyncMock(
+            return_value={
+                "id": uuid.uuid4(),
+                "goal_anchor": "Deploy the app",
+                "status": "pending",
+                "priority": "high",
+            }
+        )
 
         intent_data = {
             "id": str(uuid.uuid4()),
@@ -104,10 +116,14 @@ class TestCoordinatorClassification:
         db = AsyncMock()
         warm = AsyncMock()
 
-        llm.complete = AsyncMock(return_value=_make_llm_response({
-            "action": "query_status",
-            "reasoning": "User asking about progress",
-        }))
+        llm.complete = AsyncMock(
+            return_value=_make_llm_response(
+                {
+                    "action": "query_status",
+                    "reasoning": "User asking about progress",
+                }
+            )
+        )
 
         coord = _make_coordinator(llm, bus, db, warm, settings)
         intent_data = {
@@ -136,18 +152,24 @@ class TestCoordinatorClassification:
         warm = AsyncMock()
 
         task_id = uuid.uuid4()
-        llm.complete = AsyncMock(return_value=_make_llm_response({
-            "action": "cancel_task",
-            "task_id": str(task_id),
-            "reasoning": "User wants to cancel",
-        }))
+        llm.complete = AsyncMock(
+            return_value=_make_llm_response(
+                {
+                    "action": "cancel_task",
+                    "task_id": str(task_id),
+                    "reasoning": "User wants to cancel",
+                }
+            )
+        )
 
         coord = _make_coordinator(llm, bus, db, warm, settings)
-        coord._state_manager.load = AsyncMock(return_value=MagicMock(
-            active_tasks=[MagicMock(task_id=task_id, goal_anchor="Deploy")],
-            task_queue=[],
-            model_dump=MagicMock(return_value={}),
-        ))
+        coord._state_manager.load = AsyncMock(
+            return_value=MagicMock(
+                active_tasks=[MagicMock(task_id=task_id, goal_anchor="Deploy")],
+                task_queue=[],
+                model_dump=MagicMock(return_value={}),
+            )
+        )
         coord._task_store.update_task_status = AsyncMock()
 
         intent_data = {
@@ -179,20 +201,24 @@ class TestCoordinatorTaskComplete:
         coord = _make_coordinator(llm, bus, db, warm, settings)
         task_id = uuid.uuid4()
         coord._task_store.update_task_status = AsyncMock()
-        coord._task_store.get_task = AsyncMock(return_value={
-            "id": task_id, "goal_anchor": "Deploy the app",
-        })
-
-        await coord.on_task_complete("tasks.complete", {
-            "task_id": str(task_id),
-            "success": True,
-            "result_content": "Deployed successfully",
-            "confidence": 0.95,
-        })
-
-        coord._task_store.update_task_status.assert_called_once_with(
-            task_id, TaskStatus.COMPLETED
+        coord._task_store.get_task = AsyncMock(
+            return_value={
+                "id": task_id,
+                "goal_anchor": "Deploy the app",
+            }
         )
+
+        await coord.on_task_complete(
+            "tasks.complete",
+            {
+                "task_id": str(task_id),
+                "success": True,
+                "result_content": "Deployed successfully",
+                "confidence": 0.95,
+            },
+        )
+
+        coord._task_store.update_task_status.assert_called_once_with(task_id, TaskStatus.COMPLETED)
         calls = bus.publish.call_args_list
         channels = [c[0][0] for c in calls]
         assert "results.new" in channels
@@ -210,19 +236,23 @@ class TestCoordinatorTaskComplete:
         coord = _make_coordinator(llm, bus, db, warm, settings)
         task_id = uuid.uuid4()
         coord._task_store.update_task_status = AsyncMock()
-        coord._task_store.get_task = AsyncMock(return_value={
-            "id": task_id, "goal_anchor": "Deploy the app",
-        })
-
-        await coord.on_task_complete("tasks.complete", {
-            "task_id": str(task_id),
-            "success": False,
-            "error": "All subtasks failed",
-        })
-
-        coord._task_store.update_task_status.assert_called_once_with(
-            task_id, TaskStatus.FAILED
+        coord._task_store.get_task = AsyncMock(
+            return_value={
+                "id": task_id,
+                "goal_anchor": "Deploy the app",
+            }
         )
+
+        await coord.on_task_complete(
+            "tasks.complete",
+            {
+                "task_id": str(task_id),
+                "success": False,
+                "error": "All subtasks failed",
+            },
+        )
+
+        coord._task_store.update_task_status.assert_called_once_with(task_id, TaskStatus.FAILED)
         calls = bus.publish.call_args_list
         channels = [c[0][0] for c in calls]
         assert "results.new" in channels

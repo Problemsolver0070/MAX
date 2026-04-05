@@ -52,31 +52,58 @@ class TestPlannerDecomposition:
         warm = AsyncMock()
 
         task_id = uuid.uuid4()
-        llm.complete = AsyncMock(return_value=_make_llm_response({
-            "subtasks": [
-                {"description": "Research topic", "phase_number": 1,
-                 "tool_categories": [], "quality_criteria": {}, "estimated_complexity": "low"},
-                {"description": "Write summary", "phase_number": 2,
-                 "tool_categories": [], "quality_criteria": {}, "estimated_complexity": "moderate"},
-            ],
-            "needs_clarification": False,
-            "reasoning": "Two-phase approach: research then summarize",
-        }))
+        llm.complete = AsyncMock(
+            return_value=_make_llm_response(
+                {
+                    "subtasks": [
+                        {
+                            "description": "Research topic",
+                            "phase_number": 1,
+                            "tool_categories": [],
+                            "quality_criteria": {},
+                            "estimated_complexity": "low",
+                        },
+                        {
+                            "description": "Write summary",
+                            "phase_number": 2,
+                            "tool_categories": [],
+                            "quality_criteria": {},
+                            "estimated_complexity": "moderate",
+                        },
+                    ],
+                    "needs_clarification": False,
+                    "reasoning": "Two-phase approach: research then summarize",
+                }
+            )
+        )
 
         planner = _make_planner(llm, bus, db, warm, settings)
-        planner._task_store.create_subtask = AsyncMock(side_effect=[
-            {"id": uuid.uuid4(), "description": "Research topic",
-             "phase_number": 1, "status": "pending"},
-            {"id": uuid.uuid4(), "description": "Write summary",
-             "phase_number": 2, "status": "pending"},
-        ])
+        planner._task_store.create_subtask = AsyncMock(
+            side_effect=[
+                {
+                    "id": uuid.uuid4(),
+                    "description": "Research topic",
+                    "phase_number": 1,
+                    "status": "pending",
+                },
+                {
+                    "id": uuid.uuid4(),
+                    "description": "Write summary",
+                    "phase_number": 2,
+                    "status": "pending",
+                },
+            ]
+        )
 
-        await planner.on_task_plan("tasks.plan", {
-            "task_id": str(task_id),
-            "goal_anchor": "Research Python 3.13",
-            "priority": "normal",
-            "quality_criteria": {},
-        })
+        await planner.on_task_plan(
+            "tasks.plan",
+            {
+                "task_id": str(task_id),
+                "goal_anchor": "Research Python 3.13",
+                "priority": "normal",
+                "quality_criteria": {},
+            },
+        )
 
         calls = bus.publish.call_args_list
         channels = [c[0][0] for c in calls]
@@ -98,23 +125,30 @@ class TestPlannerDecomposition:
         db = AsyncMock()
         warm = AsyncMock()
 
-        llm.complete = AsyncMock(return_value=_make_llm_response({
-            "subtasks": [],
-            "needs_clarification": True,
-            "clarification_question": "Which app do you want deployed?",
-            "clarification_options": ["App A", "App B"],
-            "reasoning": "Ambiguous target",
-        }))
+        llm.complete = AsyncMock(
+            return_value=_make_llm_response(
+                {
+                    "subtasks": [],
+                    "needs_clarification": True,
+                    "clarification_question": "Which app do you want deployed?",
+                    "clarification_options": ["App A", "App B"],
+                    "reasoning": "Ambiguous target",
+                }
+            )
+        )
 
         planner = _make_planner(llm, bus, db, warm, settings)
         task_id = uuid.uuid4()
 
-        await planner.on_task_plan("tasks.plan", {
-            "task_id": str(task_id),
-            "goal_anchor": "Deploy the thing",
-            "priority": "normal",
-            "quality_criteria": {},
-        })
+        await planner.on_task_plan(
+            "tasks.plan",
+            {
+                "task_id": str(task_id),
+                "goal_anchor": "Deploy the thing",
+                "priority": "normal",
+                "quality_criteria": {},
+            },
+        )
 
         calls = bus.publish.call_args_list
         channels = [c[0][0] for c in calls]
@@ -135,21 +169,33 @@ class TestPlannerClarificationResume:
         warm = AsyncMock()
 
         task_id = uuid.uuid4()
-        llm.complete = AsyncMock(return_value=_make_llm_response({
-            "subtasks": [
-                {"description": "Deploy App A", "phase_number": 1,
-                 "tool_categories": [], "quality_criteria": {},
-                 "estimated_complexity": "moderate"},
-            ],
-            "needs_clarification": False,
-            "reasoning": "Clear after clarification",
-        }))
+        llm.complete = AsyncMock(
+            return_value=_make_llm_response(
+                {
+                    "subtasks": [
+                        {
+                            "description": "Deploy App A",
+                            "phase_number": 1,
+                            "tool_categories": [],
+                            "quality_criteria": {},
+                            "estimated_complexity": "moderate",
+                        },
+                    ],
+                    "needs_clarification": False,
+                    "reasoning": "Clear after clarification",
+                }
+            )
+        )
 
         planner = _make_planner(llm, bus, db, warm, settings)
-        planner._task_store.create_subtask = AsyncMock(return_value={
-            "id": uuid.uuid4(), "description": "Deploy App A",
-            "phase_number": 1, "status": "pending",
-        })
+        planner._task_store.create_subtask = AsyncMock(
+            return_value={
+                "id": uuid.uuid4(),
+                "description": "Deploy App A",
+                "phase_number": 1,
+                "status": "pending",
+            }
+        )
 
         planner._pending_clarifications[task_id] = {
             "goal_anchor": "Deploy the thing",
@@ -157,10 +203,13 @@ class TestPlannerClarificationResume:
             "quality_criteria": {},
         }
 
-        await planner.on_clarification_response("clarifications.response", {
-            "task_id": str(task_id),
-            "answer": "App A to staging",
-        })
+        await planner.on_clarification_response(
+            "clarifications.response",
+            {
+                "task_id": str(task_id),
+                "answer": "App A to staging",
+            },
+        )
 
         calls = bus.publish.call_args_list
         channels = [c[0][0] for c in calls]
@@ -219,29 +268,44 @@ class TestPlannerMaxSubtasks:
         db = AsyncMock()
         warm = AsyncMock()
 
-        llm.complete = AsyncMock(return_value=_make_llm_response({
-            "subtasks": [
-                {"description": f"Step {i}", "phase_number": 1,
-                 "tool_categories": [], "quality_criteria": {},
-                 "estimated_complexity": "low"}
-                for i in range(5)
-            ],
-            "needs_clarification": False,
-            "reasoning": "Many steps",
-        }))
+        llm.complete = AsyncMock(
+            return_value=_make_llm_response(
+                {
+                    "subtasks": [
+                        {
+                            "description": f"Step {i}",
+                            "phase_number": 1,
+                            "tool_categories": [],
+                            "quality_criteria": {},
+                            "estimated_complexity": "low",
+                        }
+                        for i in range(5)
+                    ],
+                    "needs_clarification": False,
+                    "reasoning": "Many steps",
+                }
+            )
+        )
 
         planner = _make_planner(llm, bus, db, warm, settings)
-        planner._task_store.create_subtask = AsyncMock(return_value={
-            "id": uuid.uuid4(), "description": "Step",
-            "phase_number": 1, "status": "pending",
-        })
+        planner._task_store.create_subtask = AsyncMock(
+            return_value={
+                "id": uuid.uuid4(),
+                "description": "Step",
+                "phase_number": 1,
+                "status": "pending",
+            }
+        )
 
-        await planner.on_task_plan("tasks.plan", {
-            "task_id": str(uuid.uuid4()),
-            "goal_anchor": "Big task",
-            "priority": "normal",
-            "quality_criteria": {},
-        })
+        await planner.on_task_plan(
+            "tasks.plan",
+            {
+                "task_id": str(uuid.uuid4()),
+                "goal_anchor": "Big task",
+                "priority": "normal",
+                "quality_criteria": {},
+            },
+        )
 
         assert planner._task_store.create_subtask.call_count == 3
 
