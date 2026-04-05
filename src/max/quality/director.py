@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
 from datetime import UTC, datetime
 from statistics import mean
@@ -16,6 +17,7 @@ from typing import Any
 
 from max.agents.base import AgentConfig, AgentContext, BaseAgent
 from max.config import Settings
+from max.llm.models import ModelType
 from max.models.tasks import AuditVerdict
 from max.quality.auditor import AuditorAgent
 from max.quality.models import (
@@ -55,6 +57,7 @@ class QualityDirectorAgent(BaseAgent):
         quality_store: Any,
         rule_engine: Any,
         state_manager: Any,
+        metric_collector: Any | None = None,
     ) -> None:
         context = AgentContext(bus=bus, db=db, warm_memory=warm_memory)
         super().__init__(config=config, llm=llm, context=context)
@@ -67,6 +70,7 @@ class QualityDirectorAgent(BaseAgent):
         self._quality_store = quality_store
         self._rule_engine = rule_engine
         self._state_manager = state_manager
+        self._metric_collector = metric_collector
 
     # ── Abstract method (not used directly — director is event-driven) ──
 
@@ -105,14 +109,40 @@ class QualityDirectorAgent(BaseAgent):
             len(request.subtask_results),
         )
 
+        audit_start = time.monotonic()
+
         # Get active quality rules for auditor context
         active_rules = await self._rule_engine.get_rules_for_audit()
 
-        # Spawn one AuditorAgent per subtask, run concurrently
+        # Spawn one AuditorAgent per subtask, run concurrently with timeout.
         audit_coros = [
             self._audit_subtask(item, goal_anchor, active_rules) for item in request.subtask_results
         ]
-        audit_results: list[dict[str, Any]] = await asyncio.gather(*audit_coros)
+        timeout = self._settings.quality_audit_timeout_seconds
+        try:
+            audit_results: list[dict[str, Any]] = await asyncio.wait_for(
+                asyncio.gather(*audit_coros),
+                timeout=timeout,
+            )
+        except TimeoutError:
+            logger.warning(
+                "Audit timed out after %ds for task %s — returning conditional verdicts",
+                timeout,
+                task_id,
+            )
+            audit_results = [
+                {
+                    "verdict": "conditional",
+                    "score": 0.5,
+                    "goal_alignment": 0.5,
+                    "confidence": 0.3,
+                    "issues": [],
+                    "fix_instructions": None,
+                    "strengths": [],
+                    "reasoning": "Audit timed out",
+                }
+                for _ in request.subtask_results
+            ]
 
         # Process results: build verdicts, fix instructions, trigger extraction
         subtask_verdicts: list[SubtaskVerdict] = []
@@ -225,10 +255,35 @@ class QualityDirectorAgent(BaseAgent):
             overall_score,
         )
 
+        # Record audit metrics if collector is available.
+        if self._metric_collector is not None:
+            audit_duration = time.monotonic() - audit_start
+            try:
+                await self._metric_collector.record(
+                    "audit_score",
+                    overall_score,
+                    {"task_id": str(task_id)},
+                )
+                await self._metric_collector.record(
+                    "audit_duration_seconds",
+                    audit_duration,
+                    {"task_id": str(task_id)},
+                )
+            except Exception:
+                logger.warning("Failed to record audit metrics for task %s", task_id)
+
         # Update coordinator state with audit pipeline info
         await self._update_audit_state(task_id, subtask_verdicts, overall_score)
 
     # ── Private helpers ─────────────────────────────────────────────────
+
+    @staticmethod
+    def _resolve_model(model_id: str) -> ModelType:
+        """Map a model ID string to a ModelType enum value."""
+        for mt in ModelType:
+            if mt.model_id == model_id:
+                return mt
+        return ModelType.OPUS
 
     async def _audit_subtask(
         self,
@@ -237,7 +292,8 @@ class QualityDirectorAgent(BaseAgent):
         active_rules: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """Spawn an ephemeral AuditorAgent to audit a single subtask."""
-        auditor = AuditorAgent(llm=self.llm)
+        auditor_model = self._resolve_model(self._settings.auditor_model)
+        auditor = AuditorAgent(llm=self.llm, model=auditor_model)
         result = await auditor.run(
             {
                 "goal_anchor": goal_anchor,

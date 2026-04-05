@@ -137,6 +137,27 @@ class QualityStore:
             json.dumps(content),
         )
 
+    async def record_fix_attempt(
+        self,
+        task_id: uuid.UUID,
+        subtask_id: uuid.UUID,
+        fix_attempt: int,
+        fix_instructions: str,
+    ) -> None:
+        """Record a fix attempt in the quality ledger."""
+        content = {
+            "task_id": str(task_id),
+            "subtask_id": str(subtask_id),
+            "fix_attempt": fix_attempt,
+            "fix_instructions": fix_instructions,
+        }
+        await self._db.execute(
+            "INSERT INTO quality_ledger (id, entry_type, content) VALUES ($1, $2, $3::jsonb)",
+            uuid.uuid4(),
+            "fix_attempt",
+            json.dumps(content),
+        )
+
     async def get_ledger_entries(self, entry_type: str, limit: int = 100) -> list[dict[str, Any]]:
         """Get ledger entries by type."""
         return await self._db.fetchall(
@@ -249,6 +270,33 @@ class QualityStore:
             json.dumps({"pattern_id": str(pattern_id)}),
         )
 
+    # ── User Corrections (Phase 6 integration point) ─────────────────────
+
+    async def record_user_correction(
+        self,
+        task_id: uuid.UUID,
+        subtask_id: uuid.UUID,
+        correction: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Record a user correction for future quality rule refinement.
+
+        Stub for Phase 6 user feedback integration. Records the correction
+        to the quality ledger so the rule engine can learn from user feedback.
+        """
+        content = {
+            "task_id": str(task_id),
+            "subtask_id": str(subtask_id),
+            "correction": correction,
+            **(metadata or {}),
+        }
+        await self._db.execute(
+            "INSERT INTO quality_ledger (id, entry_type, content) VALUES ($1, $2, $3::jsonb)",
+            uuid.uuid4(),
+            "user_correction",
+            json.dumps(content),
+        )
+
     # ── Metrics ─────────────────────────────────────────────────────────
 
     async def get_pass_rate(self, hours: int = 24) -> float:
@@ -259,6 +307,26 @@ class QualityStore:
             hours,
         )
         return float(row["pass_rate"]) if row and row["pass_rate"] is not None else 0.0
+
+    async def get_quality_pulse(self, hours: int = 24) -> dict[str, Any]:
+        """Get a composite quality pulse snapshot.
+
+        Returns pass_rate, avg_score, active_rules_count, and top_patterns
+        in a single method call for coordinator state updates.
+        """
+        pass_rate = await self.get_pass_rate(hours=hours)
+        avg_score = await self.get_avg_score(hours=hours)
+        active_rules = await self.get_active_rules()
+        top_patterns = await self.get_patterns(min_reinforcement=2)
+        return {
+            "pass_rate": pass_rate,
+            "avg_score": avg_score,
+            "active_rules_count": len(active_rules),
+            "top_patterns": [
+                {"pattern": p["pattern"], "reinforcement_count": p["reinforcement_count"]}
+                for p in top_patterns[:5]
+            ],
+        }
 
     async def get_avg_score(self, hours: int = 24) -> float:
         """Get the average audit score over the given window."""
