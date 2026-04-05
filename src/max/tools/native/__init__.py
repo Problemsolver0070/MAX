@@ -138,6 +138,19 @@ from max.tools.native.web_tools import (
     handle_http_fetch,
     handle_http_request,
 )
+from max.tools.native.aws_tools import (
+    TOOL_DEFINITIONS as AWS_TOOLS,
+)
+from max.tools.native.aws_tools import (
+    handle_aws_cloudwatch_query,
+    handle_aws_ec2_list,
+    handle_aws_ec2_manage,
+    handle_aws_lambda_invoke,
+    handle_aws_s3_delete,
+    handle_aws_s3_get,
+    handle_aws_s3_list,
+    handle_aws_s3_put,
+)
 from max.tools.native.browser_tools import (
     TOOL_DEFINITIONS as BROWSER_TOOLS,
 )
@@ -218,10 +231,19 @@ _HANDLER_MAP = {
     "browser.get_content": handle_browser_get_content,
     "browser.fill_form": handle_browser_fill_form,
     "browser.evaluate": handle_browser_evaluate,
+    "aws.s3_list": handle_aws_s3_list,
+    "aws.s3_get": handle_aws_s3_get,
+    "aws.s3_put": handle_aws_s3_put,
+    "aws.s3_delete": handle_aws_s3_delete,
+    "aws.ec2_list": handle_aws_ec2_list,
+    "aws.ec2_manage": handle_aws_ec2_manage,
+    "aws.lambda_invoke": handle_aws_lambda_invoke,
+    "aws.cloudwatch_query": handle_aws_cloudwatch_query,
 }
 
 ALL_TOOL_DEFINITIONS = (
-    BROWSER_TOOLS
+    AWS_TOOLS
+    + BROWSER_TOOLS
     + CALENDAR_TOOLS
     + CODE_TOOLS
     + DATA_TOOLS
