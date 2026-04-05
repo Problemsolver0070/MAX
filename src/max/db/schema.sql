@@ -547,3 +547,113 @@ CREATE TABLE IF NOT EXISTS confidence_calibration (
 
 CREATE INDEX IF NOT EXISTS idx_confidence_calibration_recorded
     ON confidence_calibration(recorded_at DESC);
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- Phase 8: Sentinel Anti-Degradation Scoring System tables
+-- ═════════════════════════════════════════════════════════════════════════════
+
+-- ── Sentinel benchmarks (fixed test suite) ────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sentinel_benchmarks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(200) NOT NULL UNIQUE,
+    category VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    scenario JSONB NOT NULL,
+    evaluation_criteria JSONB NOT NULL,
+    weight REAL NOT NULL DEFAULT 1.0,
+    version INT NOT NULL DEFAULT 1,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sentinel_benchmarks_category
+    ON sentinel_benchmarks(category);
+CREATE INDEX IF NOT EXISTS idx_sentinel_benchmarks_active
+    ON sentinel_benchmarks(active) WHERE active = TRUE;
+
+-- ── Sentinel test runs ────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sentinel_test_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    experiment_id UUID,
+    run_type VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'running',
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_sentinel_runs_experiment
+    ON sentinel_test_runs(experiment_id) WHERE experiment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sentinel_runs_type
+    ON sentinel_test_runs(run_type, started_at DESC);
+
+-- ── Sentinel scores (per-benchmark) ──────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sentinel_scores (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id UUID NOT NULL REFERENCES sentinel_test_runs(id),
+    benchmark_id UUID NOT NULL REFERENCES sentinel_benchmarks(id),
+    score REAL NOT NULL CHECK (score >= 0.0 AND score <= 1.0),
+    criteria_scores JSONB NOT NULL DEFAULT '[]',
+    reasoning TEXT,
+    evaluated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sentinel_scores_run ON sentinel_scores(run_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sentinel_scores_run_benchmark
+    ON sentinel_scores(run_id, benchmark_id);
+
+-- ── Sentinel capability scores (aggregated) ──────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sentinel_capability_scores (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id UUID NOT NULL REFERENCES sentinel_test_runs(id),
+    capability VARCHAR(100) NOT NULL,
+    aggregate_score REAL NOT NULL CHECK (aggregate_score >= 0.0 AND aggregate_score <= 1.0),
+    test_count INT NOT NULL,
+    computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sentinel_capability_run
+    ON sentinel_capability_scores(run_id, capability);
+
+-- ── Sentinel verdicts ────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sentinel_verdicts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    experiment_id UUID NOT NULL,
+    baseline_run_id UUID NOT NULL REFERENCES sentinel_test_runs(id),
+    candidate_run_id UUID NOT NULL REFERENCES sentinel_test_runs(id),
+    passed BOOLEAN NOT NULL,
+    test_regressions JSONB NOT NULL DEFAULT '[]',
+    capability_regressions JSONB NOT NULL DEFAULT '[]',
+    summary TEXT NOT NULL,
+    verdict_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sentinel_verdicts_experiment
+    ON sentinel_verdicts(experiment_id);
+CREATE INDEX IF NOT EXISTS idx_sentinel_verdicts_passed
+    ON sentinel_verdicts(passed, verdict_at DESC);
+
+-- ── Sentinel revert log ──────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sentinel_revert_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    experiment_id UUID NOT NULL,
+    verdict_id UUID NOT NULL REFERENCES sentinel_verdicts(id),
+    regression_type VARCHAR(20) NOT NULL,
+    benchmark_name VARCHAR(200),
+    capability VARCHAR(100) NOT NULL,
+    before_score REAL NOT NULL,
+    after_score REAL NOT NULL,
+    delta REAL NOT NULL,
+    reason_detail TEXT NOT NULL,
+    logged_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sentinel_revert_experiment
+    ON sentinel_revert_log(experiment_id);
+CREATE INDEX IF NOT EXISTS idx_sentinel_revert_capability
+    ON sentinel_revert_log(capability, logged_at DESC);
