@@ -106,6 +106,16 @@ class Settings(BaseSettings):
     browser_headless: bool = True
     browser_max_pages: int = 5
 
+    # ── Evolution System ────────────────────────────────────────────────
+    evolution_scout_interval_hours: int = 6
+    evolution_canary_replay_count: int = 5
+    evolution_min_priority: float = 0.3
+    evolution_max_concurrent: int = 1
+    evolution_freeze_consecutive_drops: int = 2
+    evolution_preference_refresh_signals: int = 10
+    evolution_canary_timeout_seconds: int = 300
+    evolution_snapshot_retention_days: int = 30
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
