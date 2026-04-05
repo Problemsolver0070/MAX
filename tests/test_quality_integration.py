@@ -1,6 +1,7 @@
 """End-to-end integration tests for the Quality Gate pipeline.
 
-Tests the full flow: Orchestrator -> audit.request -> Quality Director -> audit.complete -> Orchestrator -> tasks.complete.
+Tests the full flow: Orchestrator -> audit.request -> Quality Director ->
+audit.complete -> Orchestrator -> tasks.complete.
 All LLM calls are mocked. Bus publications are tracked and manually routed.
 """
 
@@ -16,7 +17,6 @@ from max.command.orchestrator import OrchestratorAgent
 from max.config import Settings
 from max.llm.models import LLMResponse
 from max.quality.director import QualityDirectorAgent
-from max.quality.models import AuditRequest
 
 
 def _make_settings(monkeypatch):
@@ -28,8 +28,11 @@ def _make_settings(monkeypatch):
 def _make_llm_response(data: dict | str) -> LLMResponse:
     text = json.dumps(data) if isinstance(data, dict) else data
     return LLMResponse(
-        text=text, input_tokens=100, output_tokens=50,
-        model="claude-opus-4-6", stop_reason="end_turn",
+        text=text,
+        input_tokens=100,
+        output_tokens=50,
+        model="claude-opus-4-6",
+        stop_reason="end_turn",
     )
 
 
@@ -67,54 +70,84 @@ class TestFullAuditPipeline:
         state_manager = AsyncMock()
 
         from max.memory.models import CoordinatorState
+
         state_manager.load = AsyncMock(return_value=CoordinatorState())
         state_manager.save = AsyncMock()
 
         # Create orchestrator
         orch_config = AgentConfig(name="orchestrator", system_prompt="")
         orch = OrchestratorAgent(
-            config=orch_config, llm=llm, bus=bus, db=db,
-            warm_memory=warm, settings=settings,
-            task_store=task_store, runner=runner,
+            config=orch_config,
+            llm=llm,
+            bus=bus,
+            db=db,
+            warm_memory=warm,
+            settings=settings,
+            task_store=task_store,
+            runner=runner,
         )
 
         # Create director
         dir_config = AgentConfig(name="quality_director", system_prompt="")
         director = QualityDirectorAgent(
-            config=dir_config, llm=llm, bus=bus, db=db,
-            warm_memory=warm, settings=settings,
-            task_store=task_store, quality_store=quality_store,
-            rule_engine=rule_engine, state_manager=state_manager,
+            config=dir_config,
+            llm=llm,
+            bus=bus,
+            db=db,
+            warm_memory=warm,
+            settings=settings,
+            task_store=task_store,
+            quality_store=quality_store,
+            rule_engine=rule_engine,
+            state_manager=state_manager,
         )
 
         task_id = uuid.uuid4()
         subtask_id = uuid.uuid4()
 
         # Setup: task_store returns subtasks
-        task_store.get_subtasks = AsyncMock(return_value=[
-            {"id": subtask_id, "description": "Write code", "phase_number": 1,
-             "quality_criteria": {}, "status": "pending"},
-        ])
-        task_store.get_task = AsyncMock(return_value={
-            "id": task_id, "goal_anchor": "Build feature",
-            "quality_criteria": {}, "status": "in_progress",
-        })
+        task_store.get_subtasks = AsyncMock(
+            return_value=[
+                {
+                    "id": subtask_id,
+                    "description": "Write code",
+                    "phase_number": 1,
+                    "quality_criteria": {},
+                    "status": "pending",
+                },
+            ]
+        )
+        task_store.get_task = AsyncMock(
+            return_value={
+                "id": task_id,
+                "goal_anchor": "Build feature",
+                "quality_criteria": {},
+                "status": "in_progress",
+            }
+        )
         task_store.create_result = AsyncMock(return_value=uuid.uuid4())
         task_store.update_task_status = AsyncMock()
         task_store.update_subtask_status = AsyncMock()
         task_store.update_subtask_result = AsyncMock()
 
         # Setup: worker returns success
-        runner.run = AsyncMock(return_value=SubtaskResult(
-            subtask_id=subtask_id, task_id=task_id,
-            success=True, content="Hello world", confidence=0.9,
-        ))
+        runner.run = AsyncMock(
+            return_value=SubtaskResult(
+                subtask_id=subtask_id,
+                task_id=task_id,
+                success=True,
+                content="Hello world",
+                confidence=0.9,
+            )
+        )
 
         # Step 1: Orchestrator receives execution plan
         plan = ExecutionPlan(
-            task_id=task_id, goal_anchor="Build feature",
+            task_id=task_id,
+            goal_anchor="Build feature",
             subtasks=[PlannedSubtask(description="Write code", phase_number=1)],
-            total_phases=1, reasoning="test",
+            total_phases=1,
+            reasoning="test",
         )
         await orch.on_execute("tasks.execute", plan.model_dump(mode="json"))
 
@@ -123,14 +156,21 @@ class TestFullAuditPipeline:
         assert len(audit_reqs) == 1
 
         # Step 2: Route audit.request to Director
-        with patch("max.quality.director.AuditorAgent") as MockAuditor:
+        with patch("max.quality.director.AuditorAgent") as mock_auditor_cls:
             mock_auditor = AsyncMock()
-            mock_auditor.run = AsyncMock(return_value={
-                "verdict": "pass", "score": 0.85, "goal_alignment": 0.9,
-                "confidence": 0.95, "issues": [], "fix_instructions": None,
-                "strengths": ["Clean code"], "reasoning": "Good",
-            })
-            MockAuditor.return_value = mock_auditor
+            mock_auditor.run = AsyncMock(
+                return_value={
+                    "verdict": "pass",
+                    "score": 0.85,
+                    "goal_alignment": 0.9,
+                    "confidence": 0.95,
+                    "issues": [],
+                    "fix_instructions": None,
+                    "strengths": ["Clean code"],
+                    "reasoning": "Good",
+                }
+            )
+            mock_auditor_cls.return_value = mock_auditor
             await director.on_audit_request("audit.request", audit_reqs[0][1])
 
         # Verify audit.complete was published
@@ -182,64 +222,101 @@ class TestFixLoopPipeline:
         state_manager = AsyncMock()
 
         from max.memory.models import CoordinatorState
+
         state_manager.load = AsyncMock(return_value=CoordinatorState())
         state_manager.save = AsyncMock()
 
         dir_config = AgentConfig(name="quality_director", system_prompt="")
         director = QualityDirectorAgent(
-            config=dir_config, llm=llm, bus=bus, db=db,
-            warm_memory=warm, settings=settings,
-            task_store=task_store, quality_store=quality_store,
-            rule_engine=rule_engine, state_manager=state_manager,
+            config=dir_config,
+            llm=llm,
+            bus=bus,
+            db=db,
+            warm_memory=warm,
+            settings=settings,
+            task_store=task_store,
+            quality_store=quality_store,
+            rule_engine=rule_engine,
+            state_manager=state_manager,
         )
 
         orch_config = AgentConfig(name="orchestrator", system_prompt="")
         orch = OrchestratorAgent(
-            config=orch_config, llm=llm, bus=bus, db=db,
-            warm_memory=warm, settings=settings,
-            task_store=task_store, runner=runner,
+            config=orch_config,
+            llm=llm,
+            bus=bus,
+            db=db,
+            warm_memory=warm,
+            settings=settings,
+            task_store=task_store,
+            runner=runner,
         )
 
         task_id = uuid.uuid4()
         subtask_id = uuid.uuid4()
 
-        task_store.get_task = AsyncMock(return_value={
-            "id": task_id, "goal_anchor": "Build feature",
-            "quality_criteria": {}, "status": "in_progress",
-        })
-        task_store.get_subtasks = AsyncMock(return_value=[
-            {"id": subtask_id, "description": "Write code", "phase_number": 1,
-             "quality_criteria": {}, "status": "pending"},
-        ])
+        task_store.get_task = AsyncMock(
+            return_value={
+                "id": task_id,
+                "goal_anchor": "Build feature",
+                "quality_criteria": {},
+                "status": "in_progress",
+            }
+        )
+        task_store.get_subtasks = AsyncMock(
+            return_value=[
+                {
+                    "id": subtask_id,
+                    "description": "Write code",
+                    "phase_number": 1,
+                    "quality_criteria": {},
+                    "status": "pending",
+                },
+            ]
+        )
         task_store.create_result = AsyncMock(return_value=uuid.uuid4())
         task_store.update_task_status = AsyncMock()
         task_store.update_subtask_status = AsyncMock()
         task_store.update_subtask_result = AsyncMock()
 
         # Worker initially returns "bad" content
-        runner.run = AsyncMock(return_value=SubtaskResult(
-            subtask_id=subtask_id, task_id=task_id,
-            success=True, content="bad output", confidence=0.8,
-        ))
+        runner.run = AsyncMock(
+            return_value=SubtaskResult(
+                subtask_id=subtask_id,
+                task_id=task_id,
+                success=True,
+                content="bad output",
+                confidence=0.8,
+            )
+        )
 
         # Step 1: Orchestrator executes plan
         plan = ExecutionPlan(
-            task_id=task_id, goal_anchor="Build feature",
+            task_id=task_id,
+            goal_anchor="Build feature",
             subtasks=[PlannedSubtask(description="Write code", phase_number=1)],
-            total_phases=1, reasoning="test",
+            total_phases=1,
+            reasoning="test",
         )
         await orch.on_execute("tasks.execute", plan.model_dump(mode="json"))
 
         # Step 2: Director audits — FAIL
         audit_reqs = [(ch, d) for ch, d in publications if ch == "audit.request"]
-        with patch("max.quality.director.AuditorAgent") as MockAuditor:
+        with patch("max.quality.director.AuditorAgent") as mock_auditor_cls:
             mock_auditor = AsyncMock()
-            mock_auditor.run = AsyncMock(return_value={
-                "verdict": "fail", "score": 0.3, "goal_alignment": 0.4,
-                "confidence": 0.9, "issues": [{"category": "quality", "description": "Bad"}],
-                "fix_instructions": "Make it better", "strengths": [], "reasoning": "Needs work",
-            })
-            MockAuditor.return_value = mock_auditor
+            mock_auditor.run = AsyncMock(
+                return_value={
+                    "verdict": "fail",
+                    "score": 0.3,
+                    "goal_alignment": 0.4,
+                    "confidence": 0.9,
+                    "issues": [{"category": "quality", "description": "Bad"}],
+                    "fix_instructions": "Make it better",
+                    "strengths": [],
+                    "reasoning": "Needs work",
+                }
+            )
+            mock_auditor_cls.return_value = mock_auditor
             await director.on_audit_request("audit.request", audit_reqs[0][1])
 
         # Step 3: Orchestrator receives fail -> triggers fix loop
@@ -247,10 +324,15 @@ class TestFixLoopPipeline:
         assert audit_completes[0][1]["success"] is False
 
         # Worker returns "fixed" content on second attempt
-        runner.run = AsyncMock(return_value=SubtaskResult(
-            subtask_id=subtask_id, task_id=task_id,
-            success=True, content="fixed output", confidence=0.9,
-        ))
+        runner.run = AsyncMock(
+            return_value=SubtaskResult(
+                subtask_id=subtask_id,
+                task_id=task_id,
+                success=True,
+                content="fixed output",
+                confidence=0.9,
+            )
+        )
         await orch.on_audit_complete("audit.complete", audit_completes[0][1])
 
         # Should have published a second audit.request
