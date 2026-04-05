@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid as uuid_mod
 from typing import Any
 
@@ -70,6 +71,7 @@ class PlannerAgent(BaseAgent):
         self._settings = settings
         self._task_store = task_store
         self._pending_clarifications: dict[uuid_mod.UUID, dict[str, Any]] = {}
+        self._clarification_ttl_seconds: int = 3600  # 1 hour
 
     async def run(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """BaseAgent requires this. PlannerAgent uses event-driven methods instead."""
@@ -93,7 +95,11 @@ class PlannerAgent(BaseAgent):
 
     async def on_task_plan(self, channel: str, data: dict[str, Any]) -> None:
         """Handle a task planning request from the bus."""
-        task_id = uuid_mod.UUID(data["task_id"])
+        raw_id = data.get("task_id")
+        if raw_id is None:
+            logger.error("on_task_plan received data without task_id: %s", data)
+            return
+        task_id = uuid_mod.UUID(raw_id)
         goal_anchor = data.get("goal_anchor", "")
         priority = data.get("priority", "normal")
         quality_criteria = data.get("quality_criteria", {})
@@ -160,10 +166,12 @@ class PlannerAgent(BaseAgent):
             }
 
         if parsed.get("needs_clarification"):
+            self._evict_stale_clarifications()
             self._pending_clarifications[task_id] = {
                 "goal_anchor": goal_anchor,
                 "priority": priority,
                 "quality_criteria": quality_criteria,
+                "_created_at": time.monotonic(),
             }
             await self._bus.publish(
                 "clarifications.new",
@@ -208,6 +216,18 @@ class PlannerAgent(BaseAgent):
             reasoning=parsed.get("reasoning", ""),
         )
         await self._bus.publish("tasks.execute", plan.model_dump(mode="json"))
+
+    def _evict_stale_clarifications(self) -> None:
+        """Remove pending clarifications older than the TTL."""
+        now = time.monotonic()
+        stale = [
+            tid
+            for tid, info in self._pending_clarifications.items()
+            if now - info.get("_created_at", 0) > self._clarification_ttl_seconds
+        ]
+        for tid in stale:
+            logger.info("Evicting stale clarification for task %s", tid)
+            del self._pending_clarifications[tid]
 
     @staticmethod
     def _parse_plan_response(text: str) -> dict[str, Any]:

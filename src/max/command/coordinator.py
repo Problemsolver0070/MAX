@@ -128,7 +128,11 @@ class CoordinatorAgent(BaseAgent):
 
     async def on_task_complete(self, channel: str, data: dict[str, Any]) -> None:
         """Handle task completion from the Orchestrator."""
-        task_id = uuid_mod.UUID(data["task_id"])
+        raw_id = data.get("task_id")
+        if raw_id is None:
+            logger.error("on_task_complete received data without task_id: %s", data)
+            return
+        task_id = uuid_mod.UUID(raw_id)
         success = data.get("success", False)
 
         if success:
@@ -161,6 +165,21 @@ class CoordinatorAgent(BaseAgent):
         intent_data: dict[str, Any],
         state: Any,
     ) -> None:
+        if len(state.active_tasks) >= self._settings.coordinator_max_active_tasks:
+            await self._bus.publish(
+                "status_updates.new",
+                {
+                    "id": str(uuid_mod.uuid4()),
+                    "task_id": str(uuid_mod.uuid4()),
+                    "message": (
+                        f"Task limit reached ({self._settings.coordinator_max_active_tasks} "
+                        f"active). Please wait for a task to complete."
+                    ),
+                    "progress": 0.0,
+                },
+            )
+            return
+
         intent_id = uuid_mod.UUID(intent_data["id"])
         task = await self._task_store.create_task(
             intent_id=intent_id,

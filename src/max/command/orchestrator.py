@@ -109,6 +109,7 @@ class OrchestratorAgent(BaseAgent):
             phases[st["phase_number"]].append(st)
 
         prior_results: list[SubtaskResult] = []
+        failed_results: list[SubtaskResult] = []
         all_succeeded = True
         total_subtasks = len(db_subtasks)
         completed_count = 0
@@ -143,6 +144,7 @@ class OrchestratorAgent(BaseAgent):
                     )
                 else:
                     all_succeeded = False
+                    failed_results.append(result)
                     await self._task_store.update_subtask_status(
                         result.subtask_id,
                         TaskStatus.FAILED,
@@ -185,9 +187,7 @@ class OrchestratorAgent(BaseAgent):
                 },
             )
         else:
-            error_msgs: list[str] = []
-            if prior_results:
-                error_msgs = [r.error for r in prior_results if not r.success and r.error]
+            error_msgs = [r.error for r in failed_results if r.error]
             if not error_msgs:
                 error_msgs = ["All subtasks failed"]
 
@@ -200,9 +200,16 @@ class OrchestratorAgent(BaseAgent):
                 },
             )
 
+        # Clean up cancellation tracking to prevent unbounded growth.
+        self._cancelled_tasks.discard(task_id)
+
     async def on_cancel(self, channel: str, data: dict[str, Any]) -> None:
         """Mark a task for cancellation and fail its in-progress subtasks."""
-        task_id = uuid_mod.UUID(data["task_id"])
+        raw_id = data.get("task_id")
+        if raw_id is None:
+            logger.error("on_cancel received data without task_id: %s", data)
+            return
+        task_id = uuid_mod.UUID(raw_id)
         self._cancelled_tasks.add(task_id)
         logger.info("Task %s marked for cancellation", task_id)
 
