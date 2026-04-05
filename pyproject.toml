@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "voyageai>=0.3.0",
     "aiogram>=3.27.0",
+    "aiosqlite>=0.20",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +21,20 @@ dev = [
     "pytest-asyncio>=0.25.0",
     "pytest-cov>=6.0.0",
     "ruff>=0.9.0",
+]
+browser = ["playwright>=1.49"]
+aws = ["boto3>=1.35"]
+docker = ["docker>=7.1"]
+documents = ["PyPDF2>=3.0", "openpyxl>=3.1", "jsonpath-ng>=1.6"]
+data = ["polars>=1.0"]
+media = ["Pillow>=11.0"]
+email-tools = ["aiosmtplib>=3.0", "aioimaplib>=2.0"]
+calendar-tools = ["icalendar>=6.0", "caldav>=1.4"]
+scraping = ["beautifulsoup4>=4.12"]
+ssh = ["asyncssh>=2.17"]
+openapi = ["pyyaml>=6.0"]
+all-tools = [
+    "max[browser,aws,docker,documents,data,media,email-tools,calendar-tools,scraping,ssh,openapi]"
 ]
 
 [tool.pytest.ini_options]
