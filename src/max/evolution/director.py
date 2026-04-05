@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any
 
 from max.evolution.models import (
     CanaryRequest,
-    CanaryResult,
     EvolutionJournalEntry,
     EvolutionProposal,
     PromotionEvent,

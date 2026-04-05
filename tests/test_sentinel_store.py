@@ -107,18 +107,14 @@ class TestGetBenchmark:
 class TestCreateTestRun:
     @pytest.mark.asyncio
     async def test_creates_run(self, store, mock_db):
-        run_id = await store.create_test_run(
-            experiment_id=uuid.uuid4(), run_type="baseline"
-        )
+        run_id = await store.create_test_run(experiment_id=uuid.uuid4(), run_type="baseline")
         assert isinstance(run_id, uuid.UUID)
         sql = mock_db.execute.call_args[0][0]
         assert "INSERT INTO sentinel_test_runs" in sql
 
     @pytest.mark.asyncio
     async def test_creates_scheduled_run(self, store, mock_db):
-        run_id = await store.create_test_run(
-            experiment_id=None, run_type="scheduled"
-        )
+        run_id = await store.create_test_run(experiment_id=None, run_type="scheduled")
         assert isinstance(run_id, uuid.UUID)
 
 
@@ -176,9 +172,7 @@ class TestGetScores:
     @pytest.mark.asyncio
     async def test_by_run_id(self, store, mock_db):
         run_id = uuid.uuid4()
-        mock_db.fetchall.return_value = [
-            {"score": 0.9, "benchmark_id": uuid.uuid4()}
-        ]
+        mock_db.fetchall.return_value = [{"score": 0.9, "benchmark_id": uuid.uuid4()}]
         results = await store.get_scores(run_id)
         assert len(results) == 1
 

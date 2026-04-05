@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -79,29 +79,38 @@ class TestOnRunRequest:
     @pytest.mark.asyncio
     async def test_baseline_request(self, agent, mock_scorer, mock_bus):
         exp_id = uuid.uuid4()
-        await agent._on_run_request("sentinel.run_request", {
-            "experiment_id": str(exp_id),
-            "run_type": "baseline",
-        })
+        await agent._on_run_request(
+            "sentinel.run_request",
+            {
+                "experiment_id": str(exp_id),
+                "run_type": "baseline",
+            },
+        )
         mock_scorer.run_baseline.assert_called_once_with(exp_id)
         mock_bus.publish.assert_called()
 
     @pytest.mark.asyncio
     async def test_candidate_request(self, agent, mock_scorer, mock_bus):
         exp_id = uuid.uuid4()
-        await agent._on_run_request("sentinel.run_request", {
-            "experiment_id": str(exp_id),
-            "run_type": "candidate",
-        })
+        await agent._on_run_request(
+            "sentinel.run_request",
+            {
+                "experiment_id": str(exp_id),
+                "run_type": "candidate",
+            },
+        )
         mock_scorer.run_candidate.assert_called_once_with(exp_id)
 
     @pytest.mark.asyncio
     async def test_error_handling(self, agent, mock_scorer, mock_bus):
         mock_scorer.run_baseline.side_effect = Exception("Error")
-        await agent._on_run_request("sentinel.run_request", {
-            "experiment_id": str(uuid.uuid4()),
-            "run_type": "baseline",
-        })
+        await agent._on_run_request(
+            "sentinel.run_request",
+            {
+                "experiment_id": str(uuid.uuid4()),
+                "run_type": "baseline",
+            },
+        )
         # Should not raise, just log
 
 

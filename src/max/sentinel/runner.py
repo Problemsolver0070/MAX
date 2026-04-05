@@ -57,6 +57,8 @@ Respond in JSON:
 class TestRunner:
     """Executes Sentinel benchmarks and replay tests via LLM-as-judge."""
 
+    __test__ = False
+
     def __init__(
         self,
         llm: LLMClient,
@@ -69,9 +71,7 @@ class TestRunner:
         self._quality_store = quality_store
         self._evo_store = evo_store
 
-    async def run_benchmark(
-        self, benchmark: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def run_benchmark(self, benchmark: dict[str, Any]) -> dict[str, Any]:
         """Run a single benchmark and return the score dict.
 
         Returns {score, criteria_scores, reasoning} with score=0.0 on error.
@@ -90,9 +90,7 @@ class TestRunner:
             )
 
             # Step 2: Judge the response
-            criteria_text = "\n".join(
-                f"- {c}" for c in benchmark["evaluation_criteria"]
-            )
+            criteria_text = "\n".join(f"- {c}" for c in benchmark["evaluation_criteria"])
             judge_prompt = JUDGE_PROMPT.format(
                 criteria=criteria_text,
                 scenario=json.dumps(scenario, indent=2),
@@ -111,7 +109,8 @@ class TestRunner:
 
         except Exception:
             logger.error(
-                "Benchmark %s failed", benchmark.get("name", "unknown"),
+                "Benchmark %s failed",
+                benchmark.get("name", "unknown"),
                 exc_info=True,
             )
             return {"score": 0.0, "criteria_scores": [], "reasoning": "Execution error"}
@@ -136,7 +135,11 @@ class TestRunner:
                     if reports
                     else 0.0
                 )
-                return {"score": original, "criteria_scores": [], "reasoning": "No subtasks to evaluate"}
+                return {
+                    "score": original,
+                    "criteria_scores": [],
+                    "reasoning": "No subtasks to evaluate",
+                }
 
             subtask_scores: list[float] = []
             all_criteria: list[dict[str, Any]] = []
@@ -167,7 +170,8 @@ class TestRunner:
 
         except Exception:
             logger.error(
-                "Replay for task %s failed", task.get("id", "unknown"),
+                "Replay for task %s failed",
+                task.get("id", "unknown"),
                 exc_info=True,
             )
             return {"score": 0.0, "criteria_scores": [], "reasoning": "Replay error"}
@@ -183,9 +187,7 @@ class TestRunner:
         Defaults to score 0.0 on parse failure.
         """
         cleaned = text.strip()
-        fence_match = re.search(
-            r"```(?:json)?\s*\n?(.*?)\n?\s*```", cleaned, re.DOTALL
-        )
+        fence_match = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", cleaned, re.DOTALL)
         if fence_match:
             cleaned = fence_match.group(1).strip()
         try:

@@ -45,17 +45,11 @@ class SentinelScorer:
         """Run the full suite for trend monitoring (no experiment). Returns the run_id."""
         return await self._run_suite(None, "scheduled")
 
-    async def compare_and_verdict(
-        self, experiment_id: uuid.UUID
-    ) -> SentinelVerdict:
+    async def compare_and_verdict(self, experiment_id: uuid.UUID) -> SentinelVerdict:
         """Compare baseline vs candidate runs and produce a verdict."""
         runs = await self._store.get_test_runs(experiment_id=experiment_id)
-        baseline_run = next(
-            (r for r in runs if r["run_type"] == "baseline"), None
-        )
-        candidate_run = next(
-            (r for r in runs if r["run_type"] == "candidate"), None
-        )
+        baseline_run = next((r for r in runs if r["run_type"] == "baseline"), None)
+        candidate_run = next((r for r in runs if r["run_type"] == "candidate"), None)
 
         if baseline_run is None or candidate_run is None:
             logger.error(
@@ -107,9 +101,7 @@ class SentinelScorer:
         run_type: str,
     ) -> uuid.UUID:
         """Run all benchmarks + replays and record scores."""
-        run_id = await self._store.create_test_run(
-            experiment_id=experiment_id, run_type=run_type
-        )
+        run_id = await self._store.create_test_run(experiment_id=experiment_id, run_type=run_type)
 
         try:
             benchmarks = await self._store.get_benchmarks(active_only=True)
@@ -118,42 +110,40 @@ class SentinelScorer:
             # Run fixed benchmarks
             for bench in benchmarks:
                 result = await self._runner.run_benchmark(bench)
-                await self._store.record_score({
-                    "run_id": run_id,
-                    "benchmark_id": bench["id"],
-                    "score": result["score"],
-                    "criteria_scores": result["criteria_scores"],
-                    "reasoning": result["reasoning"],
-                })
+                await self._store.record_score(
+                    {
+                        "run_id": run_id,
+                        "benchmark_id": bench["id"],
+                        "score": result["score"],
+                        "criteria_scores": result["criteria_scores"],
+                        "reasoning": result["reasoning"],
+                    }
+                )
                 cat = bench.get("category", "unknown")
                 weight = bench.get("weight", 1.0)
-                capability_totals.setdefault(cat, []).append(
-                    (result["score"], weight)
-                )
+                capability_totals.setdefault(cat, []).append((result["score"], weight))
 
             # Run replay tasks
-            replay_tasks = await self._runner.get_replay_tasks(
-                limit=self._replay_count
-            )
+            replay_tasks = await self._runner.get_replay_tasks(limit=self._replay_count)
             for task in replay_tasks:
                 task_id = task["id"]
                 subtasks = await self._task_store.get_subtasks(task_id)
                 result = await self._runner.run_replay(task, subtasks)
-                capability_totals.setdefault("replay", []).append(
-                    (result["score"], 1.0)
-                )
+                capability_totals.setdefault("replay", []).append((result["score"], 1.0))
 
             # Compute and record capability aggregates
             for cap, scores in capability_totals.items():
                 total_weighted = sum(s * w for s, w in scores)
                 total_weight = sum(w for _, w in scores)
                 aggregate = total_weighted / total_weight if total_weight > 0 else 0.0
-                await self._store.record_capability_score({
-                    "run_id": run_id,
-                    "capability": cap,
-                    "aggregate_score": aggregate,
-                    "test_count": len(scores),
-                })
+                await self._store.record_capability_score(
+                    {
+                        "run_id": run_id,
+                        "capability": cap,
+                        "aggregate_score": aggregate,
+                        "test_count": len(scores),
+                    }
+                )
 
             await self._store.complete_test_run(run_id, "completed")
 
@@ -166,30 +156,37 @@ class SentinelScorer:
     async def _log_regressions(self, verdict: SentinelVerdict) -> None:
         """Log each regression to the revert log and quality ledger."""
         for reg in verdict.test_regressions:
-            await self._store.record_revert({
-                "experiment_id": verdict.experiment_id,
-                "verdict_id": verdict.id,
-                "regression_type": "test_case",
-                "benchmark_name": reg.benchmark_name,
-                "capability": reg.capability,
-                "before_score": reg.before_score,
-                "after_score": reg.after_score,
-                "delta": reg.delta,
-                "reason_detail": reg.judge_reasoning,
-            })
+            await self._store.record_revert(
+                {
+                    "experiment_id": verdict.experiment_id,
+                    "verdict_id": verdict.id,
+                    "regression_type": "test_case",
+                    "benchmark_name": reg.benchmark_name,
+                    "capability": reg.capability,
+                    "before_score": reg.before_score,
+                    "after_score": reg.after_score,
+                    "delta": reg.delta,
+                    "reason_detail": reg.judge_reasoning,
+                }
+            )
 
         for reg in verdict.capability_regressions:
-            await self._store.record_revert({
-                "experiment_id": verdict.experiment_id,
-                "verdict_id": verdict.id,
-                "regression_type": "capability",
-                "benchmark_name": None,
-                "capability": reg.capability,
-                "before_score": reg.before_aggregate,
-                "after_score": reg.after_aggregate,
-                "delta": reg.delta,
-                "reason_detail": f"Capability aggregate dropped. Contributing: {', '.join(reg.contributing_tests)}",
-            })
+            await self._store.record_revert(
+                {
+                    "experiment_id": verdict.experiment_id,
+                    "verdict_id": verdict.id,
+                    "regression_type": "capability",
+                    "benchmark_name": None,
+                    "capability": reg.capability,
+                    "before_score": reg.before_aggregate,
+                    "after_score": reg.after_aggregate,
+                    "delta": reg.delta,
+                    "reason_detail": (
+                        "Capability aggregate dropped."
+                        f" Contributing: {', '.join(reg.contributing_tests)}"
+                    ),
+                }
+            )
 
         await self._store.record_to_ledger(
             "sentinel_revert",

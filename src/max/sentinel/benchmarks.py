@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from max.sentinel.models import Benchmark
 
@@ -90,13 +90,31 @@ _MEMORY_RETRIEVAL = [
         scenario={
             "system_prompt": "You are compacting a conversation into a summary. Preserve ALL critical details.",
             "conversation": [
-                {"role": "user", "content": "The API key for the staging environment is stored in AWS Secrets Manager under 'staging/api-key'."},
-                {"role": "assistant", "content": "Got it. I'll reference that location when configuring the staging deployment."},
-                {"role": "user", "content": "Also, never use the production API key (in 'prod/api-key') for testing. We had an incident last month."},
-                {"role": "assistant", "content": "Understood - staging and production keys must be kept strictly separate."},
-                {"role": "user", "content": "The staging URL is https://staging.example.com/api/v2"},
+                {
+                    "role": "user",
+                    "content": "The API key for the staging environment is stored in AWS Secrets Manager under 'staging/api-key'.",
+                },
+                {
+                    "role": "assistant",
+                    "content": "Got it. I'll reference that location when configuring the staging deployment.",
+                },
+                {
+                    "role": "user",
+                    "content": "Also, never use the production API key (in 'prod/api-key') for testing. We had an incident last month.",
+                },
+                {
+                    "role": "assistant",
+                    "content": "Understood - staging and production keys must be kept strictly separate.",
+                },
+                {
+                    "role": "user",
+                    "content": "The staging URL is https://staging.example.com/api/v2",
+                },
                 {"role": "assistant", "content": "Noted."},
-                {"role": "user", "content": "Can you summarize what we discussed about the staging setup?"},
+                {
+                    "role": "user",
+                    "content": "Can you summarize what we discussed about the staging setup?",
+                },
             ],
         },
         evaluation_criteria=[
@@ -542,9 +560,22 @@ _ORCHESTRATION = [
         scenario={
             "system_prompt": "You are an orchestrator. Execute these tasks in order, passing state between them.",
             "chain": [
-                {"id": "A", "description": "Query database for user list", "output_key": "user_list"},
-                {"id": "B", "description": "Filter active users from the list", "input_key": "user_list", "output_key": "active_users"},
-                {"id": "C", "description": "Send notification email to each active user", "input_key": "active_users"},
+                {
+                    "id": "A",
+                    "description": "Query database for user list",
+                    "output_key": "user_list",
+                },
+                {
+                    "id": "B",
+                    "description": "Filter active users from the list",
+                    "input_key": "user_list",
+                    "output_key": "active_users",
+                },
+                {
+                    "id": "C",
+                    "description": "Send notification email to each active user",
+                    "input_key": "active_users",
+                },
             ],
         },
         evaluation_criteria=[
@@ -582,8 +613,6 @@ class BenchmarkRegistry:
         """Get all active benchmarks."""
         return await store.get_benchmarks(active_only=True)
 
-    async def get_by_category(
-        self, store: SentinelStore, category: str
-    ) -> list[dict]:
+    async def get_by_category(self, store: SentinelStore, category: str) -> list[dict]:
         """Get active benchmarks for a specific capability dimension."""
         return await store.get_benchmarks(active_only=True, category=category)

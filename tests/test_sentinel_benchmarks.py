@@ -38,6 +38,7 @@ class TestBenchmarkDefinitions:
 
     def test_four_benchmarks_per_category(self):
         from collections import Counter
+
         counts = Counter(b.category for b in BENCHMARKS)
         for cat, count in counts.items():
             assert count == 4, f"{cat} has {count} benchmarks, expected 4"
@@ -94,6 +95,4 @@ class TestBenchmarkRegistry:
     @pytest.mark.asyncio
     async def test_get_by_category(self, registry, mock_store):
         await registry.get_by_category(mock_store, "security")
-        mock_store.get_benchmarks.assert_called_once_with(
-            active_only=True, category="security"
-        )
+        mock_store.get_benchmarks.assert_called_once_with(active_only=True, category="security")
