@@ -176,22 +176,22 @@ class TestPostgresQuery:
         assert result["row_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_closes_connection_on_error(self):
+    async def test_returns_error_on_failure(self):
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(side_effect=RuntimeError("query failed"))
         mock_conn.close = AsyncMock()
 
         with patch("max.tools.native.database_tools.asyncpg") as mock_asyncpg:
             mock_asyncpg.connect = AsyncMock(return_value=mock_conn)
-            with pytest.raises(RuntimeError, match="query failed"):
-                await handle_database_postgres_query(
-                    {
-                        "connection_string": "postgresql://localhost/db",
-                        "query": "SELECT * FROM broken",
-                    }
-                )
+            result = await handle_database_postgres_query(
+                {
+                    "connection_string": "postgresql://localhost/db",
+                    "query": "SELECT * FROM broken",
+                }
+            )
 
-        mock_conn.close.assert_awaited_once()
+        assert "error" in result
+        assert "query failed" in result["error"]
 
 
 class TestPostgresExecute:
@@ -250,22 +250,22 @@ class TestPostgresExecute:
         assert result["rows_affected"] == 0
 
     @pytest.mark.asyncio
-    async def test_closes_connection_on_error(self):
+    async def test_returns_error_on_failure(self):
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock(side_effect=RuntimeError("exec failed"))
         mock_conn.close = AsyncMock()
 
         with patch("max.tools.native.database_tools.asyncpg") as mock_asyncpg:
             mock_asyncpg.connect = AsyncMock(return_value=mock_conn)
-            with pytest.raises(RuntimeError, match="exec failed"):
-                await handle_database_postgres_execute(
-                    {
-                        "connection_string": "postgresql://localhost/db",
-                        "query": "DROP TABLE nonexistent",
-                    }
-                )
+            result = await handle_database_postgres_execute(
+                {
+                    "connection_string": "postgresql://localhost/db",
+                    "query": "DROP TABLE nonexistent",
+                }
+            )
 
-        mock_conn.close.assert_awaited_once()
+        assert "error" in result
+        assert "exec failed" in result["error"]
 
 
 class TestParsePgStatus:
@@ -546,17 +546,19 @@ class TestRedisGet:
         assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_closes_on_error(self):
+    async def test_returns_error_on_failure(self):
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(side_effect=RuntimeError("connection lost"))
         mock_client.aclose = AsyncMock()
 
         with patch("max.tools.native.database_tools.aioredis") as mock_redis:
             mock_redis.from_url = MagicMock(return_value=mock_client)
-            with pytest.raises(RuntimeError, match="connection lost"):
-                await handle_database_redis_get({"url": "redis://localhost:6379/0", "key": "fail"})
+            result = await handle_database_redis_get(
+                {"url": "redis://localhost:6379/0", "key": "fail"}
+            )
 
-        mock_client.aclose.assert_awaited_once()
+        assert "error" in result
+        assert "connection lost" in result["error"]
 
 
 class TestRedisSet:
@@ -600,20 +602,20 @@ class TestRedisSet:
         mock_client.set.assert_awaited_once_with("ephemeral", "temp", ex=60)
 
     @pytest.mark.asyncio
-    async def test_closes_on_error(self):
+    async def test_returns_error_on_failure(self):
         mock_client = AsyncMock()
         mock_client.set = AsyncMock(side_effect=RuntimeError("write failed"))
         mock_client.aclose = AsyncMock()
 
         with patch("max.tools.native.database_tools.aioredis") as mock_redis:
             mock_redis.from_url = MagicMock(return_value=mock_client)
-            with pytest.raises(RuntimeError, match="write failed"):
-                await handle_database_redis_set(
-                    {
-                        "url": "redis://localhost:6379/0",
-                        "key": "fail",
-                        "value": "x",
-                    }
-                )
+            result = await handle_database_redis_set(
+                {
+                    "url": "redis://localhost:6379/0",
+                    "key": "fail",
+                    "value": "x",
+                }
+            )
 
-        mock_client.aclose.assert_awaited_once()
+        assert "error" in result
+        assert "write failed" in result["error"]

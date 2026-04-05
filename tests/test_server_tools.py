@@ -397,13 +397,14 @@ class TestMissingAsyncSSHDependency:
     @pytest.mark.asyncio
     async def test_ssh_execute_no_asyncssh(self):
         with patch("max.tools.native.server_tools.HAS_ASYNCSSH", False):
-            with pytest.raises(RuntimeError, match="asyncssh library is not installed"):
-                await handle_server_ssh_execute(
-                    {
-                        "host": "example.com",
-                        "command": "ls",
-                    }
-                )
+            result = await handle_server_ssh_execute(
+                {
+                    "host": "example.com",
+                    "command": "ls",
+                }
+            )
+            assert "error" in result
+            assert "asyncssh library is not installed" in result["error"]
 
     @pytest.mark.asyncio
     async def test_system_info_works_without_asyncssh(self):

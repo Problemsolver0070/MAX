@@ -293,7 +293,7 @@ def _build_vcal(
 
 async def _run_sync(fn: Any, *args: Any, **kwargs: Any) -> Any:
     """Run a synchronous function in the default executor."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     call = functools.partial(fn, *args, **kwargs)
     return await loop.run_in_executor(None, call)
 

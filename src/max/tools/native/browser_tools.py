@@ -23,6 +23,7 @@ except ImportError:
 
 _browser: Any = None  # playwright Browser instance
 _context: Any = None  # BrowserContext
+_playwright_instance: Any = None  # playwright process instance
 _pages: dict[str, Any] = {}  # page_id → Page
 MAX_PAGES = 5
 MAX_CONTENT_BYTES = 50_000  # 50 KB cap for content returns
@@ -170,12 +171,16 @@ TOOL_DEFINITIONS = [
 
 
 async def _ensure_browser() -> None:
-    """Launch browser if not running."""
-    global _browser, _context
+    """Launch browser if not running, reading config from Settings."""
+    global _browser, _context, _playwright_instance, MAX_PAGES
     if _browser is None:
-        pw = await async_playwright().start()
-        _browser = await pw.chromium.launch(headless=True)
+        from max.config import Settings
+
+        settings = Settings()
+        _playwright_instance = await async_playwright().start()
+        _browser = await _playwright_instance.chromium.launch(headless=settings.browser_headless)
         _context = await _browser.new_context()
+        MAX_PAGES = settings.browser_max_pages
 
 
 async def _get_page(page_id: str | None = None) -> tuple[str, Any]:
@@ -203,7 +208,7 @@ def _require_page(page_id: str) -> Any | None:
 
 async def close_browser() -> None:
     """Cleanup browser resources."""
-    global _browser, _context, _pages
+    global _browser, _context, _playwright_instance, _pages
     for page in _pages.values():
         await page.close()
     _pages.clear()
@@ -211,6 +216,9 @@ async def close_browser() -> None:
         await _browser.close()
         _browser = None
         _context = None
+    if _playwright_instance:
+        await _playwright_instance.stop()
+        _playwright_instance = None
 
 
 def _no_playwright_error() -> dict[str, Any]:

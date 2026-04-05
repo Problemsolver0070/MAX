@@ -4,10 +4,23 @@ from __future__ import annotations
 
 from typing import Any
 
-import asyncpg
-import redis.asyncio as aioredis
-
 from max.tools.registry import ToolDefinition
+
+try:
+    import asyncpg
+
+    HAS_ASYNCPG = True
+except ImportError:
+    asyncpg = None  # type: ignore[assignment]
+    HAS_ASYNCPG = False
+
+try:
+    import redis.asyncio as aioredis
+
+    HAS_REDIS = True
+except ImportError:
+    aioredis = None  # type: ignore[assignment]
+    HAS_REDIS = False
 
 try:
     import aiosqlite
@@ -183,27 +196,37 @@ TOOL_DEFINITIONS = [
 
 async def handle_database_postgres_query(inputs: dict[str, Any]) -> dict[str, Any]:
     """Execute a SELECT query on PostgreSQL and return rows."""
-    conn = await asyncpg.connect(inputs["connection_string"])
+    if not HAS_ASYNCPG:
+        return {"error": "asyncpg is not installed. Install with: pip install asyncpg"}
     try:
-        params = inputs.get("params") or []
-        records = await conn.fetch(inputs["query"], *params)
-        rows = [dict(r) for r in records]
-        return {"rows": rows, "row_count": len(rows)}
-    finally:
-        await conn.close()
+        conn = await asyncpg.connect(inputs["connection_string"])
+        try:
+            params = inputs.get("params") or []
+            records = await conn.fetch(inputs["query"], *params)
+            rows = [dict(r) for r in records]
+            return {"rows": rows, "row_count": len(rows)}
+        finally:
+            await conn.close()
+    except Exception as e:
+        return {"error": str(e)}
 
 
 async def handle_database_postgres_execute(inputs: dict[str, Any]) -> dict[str, Any]:
     """Execute a DML/DDL statement on PostgreSQL."""
-    conn = await asyncpg.connect(inputs["connection_string"])
+    if not HAS_ASYNCPG:
+        return {"error": "asyncpg is not installed. Install with: pip install asyncpg"}
     try:
-        params = inputs.get("params") or []
-        status = await conn.execute(inputs["query"], *params)
-        # asyncpg returns a status string like "INSERT 0 1" or "DELETE 3"
-        rows_affected = _parse_pg_status(status)
-        return {"status": status, "rows_affected": rows_affected}
-    finally:
-        await conn.close()
+        conn = await asyncpg.connect(inputs["connection_string"])
+        try:
+            params = inputs.get("params") or []
+            status = await conn.execute(inputs["query"], *params)
+            # asyncpg returns a status string like "INSERT 0 1" or "DELETE 3"
+            rows_affected = _parse_pg_status(status)
+            return {"status": status, "rows_affected": rows_affected}
+        finally:
+            await conn.close()
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def _parse_pg_status(status: str) -> int:
@@ -265,30 +288,40 @@ async def handle_database_sqlite_execute(inputs: dict[str, Any]) -> dict[str, An
 
 async def handle_database_redis_get(inputs: dict[str, Any]) -> dict[str, Any]:
     """Get one or more Redis keys."""
-    client = aioredis.from_url(inputs["url"], decode_responses=True)
+    if not HAS_REDIS:
+        return {"error": "redis is not installed. Install with: pip install redis"}
     try:
-        keys = inputs.get("keys")
-        if keys:
-            values = await client.mget(keys)
-            return {"values": dict(zip(keys, values))}
-        key = inputs.get("key")
-        if not key:
-            return {"error": "Either 'key' or 'keys' must be provided"}
-        value = await client.get(key)
-        return {"value": value}
-    finally:
-        await client.aclose()
+        client = aioredis.from_url(inputs["url"], decode_responses=True)
+        try:
+            keys = inputs.get("keys")
+            if keys:
+                values = await client.mget(keys)
+                return {"values": dict(zip(keys, values))}
+            key = inputs.get("key")
+            if not key:
+                return {"error": "Either 'key' or 'keys' must be provided"}
+            value = await client.get(key)
+            return {"value": value}
+        finally:
+            await client.aclose()
+    except Exception as e:
+        return {"error": str(e)}
 
 
 async def handle_database_redis_set(inputs: dict[str, Any]) -> dict[str, Any]:
     """Set a Redis key to a value with optional TTL."""
-    client = aioredis.from_url(inputs["url"], decode_responses=True)
+    if not HAS_REDIS:
+        return {"error": "redis is not installed. Install with: pip install redis"}
     try:
-        ttl = inputs.get("ttl")
-        if ttl:
-            await client.set(inputs["key"], inputs["value"], ex=ttl)
-        else:
-            await client.set(inputs["key"], inputs["value"])
-        return {"success": True}
-    finally:
-        await client.aclose()
+        client = aioredis.from_url(inputs["url"], decode_responses=True)
+        try:
+            ttl = inputs.get("ttl")
+            if ttl:
+                await client.set(inputs["key"], inputs["value"], ex=ttl)
+            else:
+                await client.set(inputs["key"], inputs["value"])
+            return {"success": True}
+        finally:
+            await client.aclose()
+    except Exception as e:
+        return {"error": str(e)}

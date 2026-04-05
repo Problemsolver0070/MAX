@@ -146,14 +146,16 @@ class TestReadPdf:
     @pytest.mark.asyncio
     async def test_file_not_found(self):
         with patch("max.tools.native.document_tools.HAS_PYPDF2", True):
-            with pytest.raises(FileNotFoundError):
-                await handle_document_read_pdf({"path": "/nonexistent/test.pdf"})
+            result = await handle_document_read_pdf({"path": "/nonexistent/test.pdf"})
+            assert "error" in result
+            assert "File not found" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_pypdf2(self):
         with patch("max.tools.native.document_tools.HAS_PYPDF2", False):
-            with pytest.raises(RuntimeError, match="PyPDF2 is not installed"):
-                await handle_document_read_pdf({"path": "/fake/test.pdf"})
+            result = await handle_document_read_pdf({"path": "/fake/test.pdf"})
+            assert "error" in result
+            assert "PyPDF2 is not installed" in result["error"]
 
 
 # ── CSV tools (real files) ────────────────────────────────────────────
@@ -239,15 +241,17 @@ class TestReadSpreadsheetCsv:
 
     @pytest.mark.asyncio
     async def test_file_not_found(self, tmp_path):
-        with pytest.raises(FileNotFoundError):
-            await handle_document_read_spreadsheet({"path": str(tmp_path / "nope.csv")})
+        result = await handle_document_read_spreadsheet({"path": str(tmp_path / "nope.csv")})
+        assert "error" in result
+        assert "File not found" in result["error"]
 
     @pytest.mark.asyncio
     async def test_unsupported_format(self, tmp_path):
         f = tmp_path / "data.parquet"
         f.write_text("dummy")
-        with pytest.raises(ValueError, match="Unsupported file format"):
-            await handle_document_read_spreadsheet({"path": str(f)})
+        result = await handle_document_read_spreadsheet({"path": str(f)})
+        assert "error" in result
+        assert "Unsupported file format" in result["error"]
 
 
 # ── Excel tools (mocked) ─────────────────────────────────────────────
@@ -327,8 +331,9 @@ class TestReadSpreadsheetExcel:
         xlsx.write_text("fake")
 
         with patch("max.tools.native.document_tools.HAS_OPENPYXL", False):
-            with pytest.raises(RuntimeError, match="openpyxl is not installed"):
-                await handle_document_read_spreadsheet({"path": str(xlsx)})
+            result = await handle_document_read_spreadsheet({"path": str(xlsx)})
+            assert "error" in result
+            assert "openpyxl is not installed" in result["error"]
 
 
 class TestWriteSpreadsheet:
@@ -425,10 +430,11 @@ class TestWriteSpreadsheet:
     @pytest.mark.asyncio
     async def test_missing_openpyxl(self):
         with patch("max.tools.native.document_tools.HAS_OPENPYXL", False):
-            with pytest.raises(RuntimeError, match="openpyxl is not installed"):
-                await handle_document_write_spreadsheet(
-                    {"path": "/tmp/test.xlsx", "rows": [{"x": 1}]}
-                )
+            result = await handle_document_write_spreadsheet(
+                {"path": "/tmp/test.xlsx", "rows": [{"x": 1}]}
+            )
+            assert "error" in result
+            assert "openpyxl is not installed" in result["error"]
 
 
 # ── JSON tools (real files) ───────────────────────────────────────────
@@ -463,8 +469,9 @@ class TestParseJson:
 
     @pytest.mark.asyncio
     async def test_file_not_found(self, tmp_path):
-        with pytest.raises(FileNotFoundError):
-            await handle_document_parse_json({"path": str(tmp_path / "nonexistent.json")})
+        result = await handle_document_parse_json({"path": str(tmp_path / "nonexistent.json")})
+        assert "error" in result
+        assert "File not found" in result["error"]
 
     @pytest.mark.asyncio
     async def test_jsonpath_query(self, tmp_path):
@@ -499,8 +506,9 @@ class TestParseJson:
         f.write_text(json.dumps({"key": "value"}))
 
         with patch("max.tools.native.document_tools.HAS_JSONPATH", False):
-            with pytest.raises(RuntimeError, match="jsonpath-ng is not installed"):
-                await handle_document_parse_json({"path": str(f), "query": "$.key"})
+            result = await handle_document_parse_json({"path": str(f), "query": "$.key"})
+            assert "error" in result
+            assert "jsonpath-ng is not installed" in result["error"]
 
     @pytest.mark.asyncio
     async def test_no_query_returns_data(self, tmp_path):

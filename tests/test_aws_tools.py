@@ -77,50 +77,58 @@ class TestMissingDependency:
     @pytest.mark.asyncio
     async def test_missing_boto3_s3(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
-            with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_s3_list({})
+            result = await handle_aws_s3_list({})
+            assert "error" in result
+            assert "boto3 is required" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_boto3_s3_get(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
-            with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_s3_get({"bucket": "b", "key": "k"})
+            result = await handle_aws_s3_get({"bucket": "b", "key": "k"})
+            assert "error" in result
+            assert "boto3 is required" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_boto3_s3_put(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
-            with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_s3_put({"bucket": "b", "key": "k", "content": "c"})
+            result = await handle_aws_s3_put({"bucket": "b", "key": "k", "content": "c"})
+            assert "error" in result
+            assert "boto3 is required" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_boto3_s3_delete(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
-            with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_s3_delete({"bucket": "b", "key": "k"})
+            result = await handle_aws_s3_delete({"bucket": "b", "key": "k"})
+            assert "error" in result
+            assert "boto3 is required" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_boto3_ec2(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
-            with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_ec2_list({})
+            result = await handle_aws_ec2_list({})
+            assert "error" in result
+            assert "boto3 is required" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_boto3_ec2_manage(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
-            with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_ec2_manage({"instance_ids": ["i-1"], "action": "stop"})
+            result = await handle_aws_ec2_manage({"instance_ids": ["i-1"], "action": "stop"})
+            assert "error" in result
+            assert "boto3 is required" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_boto3_lambda(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
-            with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_lambda_invoke({"function_name": "fn"})
+            result = await handle_aws_lambda_invoke({"function_name": "fn"})
+            assert "error" in result
+            assert "boto3 is required" in result["error"]
 
     @pytest.mark.asyncio
     async def test_missing_boto3_cloudwatch(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
-            with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_cloudwatch_query({"log_group": "/test"})
+            result = await handle_aws_cloudwatch_query({"log_group": "/test"})
+            assert "error" in result
+            assert "boto3 is required" in result["error"]
 
 
 # ── S3 List ──────────────────────────────────────────────────────────
@@ -485,8 +493,9 @@ class TestEC2Manage:
         mock_client = MagicMock()
 
         with mock_boto3_client(mock_client):
-            with pytest.raises(ValueError, match="Invalid action"):
-                await handle_aws_ec2_manage({"instance_ids": ["i-123"], "action": "terminate"})
+            result = await handle_aws_ec2_manage({"instance_ids": ["i-123"], "action": "terminate"})
+            assert "error" in result
+            assert "Invalid action" in result["error"]
 
 
 # ── Lambda Invoke ────────────────────────────────────────────────────

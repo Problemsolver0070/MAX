@@ -177,11 +177,15 @@ async def handle_media_image_resize(inputs: dict[str, Any]) -> dict[str, Any]:
     height = inputs["height"]
     output_path = inputs.get("output_path", path)
 
-    try:
+    def _resize() -> dict[str, Any]:
         img = Image.open(path)
         resized = img.resize((width, height))
         resized.save(output_path)
         return {"path": output_path, "width": width, "height": height}
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _resize)
     except FileNotFoundError:
         return {"error": f"File not found: {path}"}
     except Exception as exc:
@@ -204,13 +208,19 @@ async def handle_media_image_convert(inputs: dict[str, Any]) -> dict[str, Any]:
         if not fmt:
             return {"error": f"Cannot determine format from extension: {ext}"}
 
-    try:
+    final_fmt = fmt
+
+    def _convert() -> dict[str, Any]:
         img = Image.open(path)
         # Convert RGBA to RGB for formats that don't support alpha
-        if fmt in ("JPEG", "BMP") and img.mode in ("RGBA", "P"):
+        if final_fmt in ("JPEG", "BMP") and img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
-        img.save(output_path, format=fmt)
-        return {"path": output_path, "format": fmt}
+        img.save(output_path, format=final_fmt)
+        return {"path": output_path, "format": final_fmt}
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _convert)
     except FileNotFoundError:
         return {"error": f"File not found: {path}"}
     except Exception as exc:
@@ -224,7 +234,7 @@ async def handle_media_image_info(inputs: dict[str, Any]) -> dict[str, Any]:
 
     path = inputs["path"]
 
-    try:
+    def _info() -> dict[str, Any]:
         size_bytes = os.path.getsize(path)
         img = Image.open(path)
         # Access .size to get dimensions, .format and .mode for metadata
@@ -236,6 +246,10 @@ async def handle_media_image_info(inputs: dict[str, Any]) -> dict[str, Any]:
             "mode": img.mode,
             "size_bytes": size_bytes,
         }
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _info)
     except FileNotFoundError:
         return {"error": f"File not found: {path}"}
     except Exception as exc:
@@ -267,7 +281,7 @@ async def handle_media_audio_transcribe(inputs: dict[str, Any]) -> dict[str, Any
         }
 
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _sync_transcribe)
     except Exception as exc:
         return {"error": f"Audio transcription failed: {exc}"}
@@ -283,7 +297,7 @@ async def handle_media_video_info(inputs: dict[str, Any]) -> dict[str, Any]:
     if not os.path.isfile(path):
         return {"error": f"File not found: {path}"}
 
-    try:
+    def _probe() -> dict[str, Any]:
         probe = ffmpeg.probe(path)
 
         # Find the first video stream
@@ -314,5 +328,9 @@ async def handle_media_video_info(inputs: dict[str, Any]) -> dict[str, Any]:
             result["codec"] = ""
 
         return result
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _probe)
     except Exception as exc:
         return {"error": f"Video info failed: {exc}"}

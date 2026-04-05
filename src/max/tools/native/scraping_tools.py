@@ -177,7 +177,15 @@ async def handle_web_search(inputs: dict[str, Any]) -> dict[str, Any]:
     """Search the web using Brave Search API."""
     query = inputs["query"]
     count = inputs.get("count", 5)
-    api_key = inputs.get("api_key", "")
+    api_key = inputs.get("api_key")
+
+    if not api_key:
+        try:
+            from max.config import Settings
+
+            api_key = Settings().brave_search_api_key
+        except Exception:
+            pass  # Settings may not be configured
 
     if not api_key:
         return {
