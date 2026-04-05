@@ -250,6 +250,31 @@ class TestFullPipeline:
         exec_pub = next((ch, d) for ch, d in publications if ch == "tasks.execute")
         await orchestrator.on_execute("tasks.execute", exec_pub[1])
 
+        # Step 3b: After audit integration, successful execution publishes
+        # audit.request instead of tasks.complete.  Simulate the audit passing.
+        audit_pub = next((ch, d) for ch, d in publications if ch == "audit.request")
+        assert audit_pub is not None
+
+        # Simulate audit.complete with pass verdict for all subtasks
+        audit_items = audit_pub[1]["subtask_results"]
+        audit_response = {
+            "task_id": audit_pub[1]["task_id"],
+            "success": True,
+            "verdicts": [
+                {
+                    "subtask_id": item["subtask_id"],
+                    "verdict": "pass",
+                    "score": 0.9,
+                    "goal_alignment": 0.9,
+                    "issues": [],
+                }
+                for item in audit_items
+            ],
+            "overall_score": 0.9,
+            "fix_required": [],
+        }
+        await orchestrator.on_audit_complete("audit.complete", audit_response)
+
         # Step 4: Find the tasks.complete publication and feed back to coordinator
         complete_pub = next((ch, d) for ch, d in publications if ch == "tasks.complete")
         await coordinator.on_task_complete("tasks.complete", complete_pub[1])
