@@ -1,7 +1,7 @@
 # Max — Project Status
 
 > **Last updated:** 2026-04-05
-> **Current phase:** Phase 6A Complete + Merged, Phase 6B not started
+> **Current phase:** Phase 6B Complete + Merged, Phase 7 not started
 > **Branch:** `master` (Phase 1-5 + Phase 6A merged)
 
 ---
@@ -18,7 +18,9 @@
 6. Check `docs/superpowers/plans/2026-04-05-max-phase5-quality-gate.md` for Phase 5 plan (completed)
 7. Check `docs/superpowers/specs/2026-04-05-max-phase6a-tool-framework.md` for Phase 6A design spec
 8. Check `docs/superpowers/plans/2026-04-05-max-phase6a-tool-framework.md` for Phase 6A plan (completed)
-9. **Next step:** Brainstorm + write Phase 6B (Full Tool Arsenal) spec and plan, then Phase 7
+9. Check `docs/superpowers/specs/2026-04-05-max-phase6b-full-tools.md` for Phase 6B design spec
+10. Check `docs/superpowers/plans/2026-04-05-max-phase6b-full-tools.md` for Phase 6B plan (completed)
+11. **Next step:** Brainstorm + write Phase 7 (Evolution System) spec and plan, then execute
 
 ---
 
@@ -214,6 +216,40 @@ Key features:
 - asyncio.wait_for timeout enforcement per tool execution
 - 50KB output caps on shell and web tools
 
+### Phase 6B: Full Tool Arsenal (Complete + Merged)
+
+```
+src/max/tools/native/
+├── code_tools.py         # 5 tools: ast_parse, lint, format, test, dependencies
+├── browser_tools.py      # 7 tools: navigate, click, type, screenshot, get_content, fill_form, evaluate
+├── database_tools.py     # 6 tools: postgres query/execute, sqlite query/execute, redis get/set
+├── docker_tools.py       # 6 tools: list_containers, run, stop, logs, build, compose
+├── document_tools.py     # 5 tools: read_pdf, read_spreadsheet, write_csv, write_spreadsheet, parse_json
+├── aws_tools.py          # 8 tools: s3 (list/get/put/delete), ec2 (list/manage), lambda, cloudwatch
+├── email_tools.py        # 4 tools: send, read, search, list_folders
+├── calendar_tools.py     # 4 tools: list_events, create_event, update_event, delete_event
+├── data_tools.py         # 5 tools: load, query, summarize, transform, export
+├── media_tools.py        # 5 tools: image (resize/convert/info), audio transcribe, video info
+├── scraping_tools.py     # 3 tools: scrape, extract_links, search
+├── git_ext_tools.py      # 4 tools: clone, branch, push, pr_create
+├── server_tools.py       # 3 tools: system_info, ssh_execute, service_status
+
+src/max/tools/providers/
+├── openapi.py            # OpenAPI 3.x auto-import provider
+```
+
+**949 tests passing (484 new), lint/format clean.**
+
+Key features:
+- 65 new native tools across 13 categories (code, browser, database, docker, documents, AWS, email, calendar, data, media, scraping, git ext, server)
+- OpenAPI auto-import provider: generates tools from OpenAPI 3.x specs
+- All optional dependencies use graceful imports with HAS_<LIB> flags
+- All handlers follow contract: return dicts, never raise exceptions
+- Sync library calls (boto3, docker, Pillow, polars, CalDAV) wrapped in run_in_executor
+- 50KB output caps applied consistently
+- Settings fallback for email, calendar, browser, and web search credentials
+- 11 review findings fixed (4 critical + 7 important)
+
 ### Database Schema (15 tables + alterations)
 Phase 1: tasks, subtasks, audit_reports, intents, results, status_updates, clarification_requests, context_anchors, quality_ledger, memory_embeddings
 Phase 2: graph_nodes, graph_edges, compaction_log, performance_metrics, shelved_improvements
@@ -231,6 +267,7 @@ Phase 3: TELEGRAM_BOT_TOKEN, COMM_BATCH_INTERVAL_SECONDS(30), COMM_MAX_BATCH_SIZ
 Phase 4: COORDINATOR_MODEL(claude-opus-4-6), PLANNER_MODEL, ORCHESTRATOR_MODEL, WORKER_MODEL, COORDINATOR_MAX_ACTIVE_TASKS(5), PLANNER_MAX_SUBTASKS(10), WORKER_MAX_RETRIES(2), WORKER_TIMEOUT_SECONDS(300)
 Phase 5: QUALITY_DIRECTOR_MODEL(claude-opus-4-6), AUDITOR_MODEL(claude-opus-4-6), QUALITY_MAX_FIX_ATTEMPTS(2), QUALITY_AUDIT_TIMEOUT_SECONDS(120), QUALITY_PASS_THRESHOLD(0.7), QUALITY_HIGH_SCORE_THRESHOLD(0.9), QUALITY_MAX_RULES_PER_AUDIT(5), QUALITY_MAX_RECENT_VERDICTS(50)
 Phase 6A: TOOL_EXECUTION_TIMEOUT_SECONDS(60), TOOL_MAX_CONCURRENT(10), TOOL_AUDIT_ENABLED(True), TOOL_SHELL_TIMEOUT_SECONDS(30), TOOL_HTTP_TIMEOUT_SECONDS(30)
+Phase 6B: EMAIL_SMTP_HOST, EMAIL_SMTP_PORT(587), EMAIL_IMAP_HOST, EMAIL_USER, EMAIL_PASSWORD, CALDAV_URL, CALDAV_USER, CALDAV_PASSWORD, BRAVE_SEARCH_API_KEY, BROWSER_HEADLESS(True), BROWSER_MAX_PAGES(5)
 
 ---
 
@@ -308,6 +345,27 @@ Phase 6A: TOOL_EXECUTION_TIMEOUT_SECONDS(60), TOOL_MAX_CONCURRENT(10), TOOL_AUDI
 
 ---
 
+## Phase 6B Code Review — ALL RESOLVED
+
+11 findings from final code review, all fixed in commit `85f726f`:
+
+### Critical (4/4 fixed):
+1. ~~document_tools raises exceptions~~ — ✅ All handlers return error dicts
+2. ~~database_tools unconditional imports~~ — ✅ Defensive HAS_ASYNCPG/HAS_REDIS flags
+3. ~~_check_* helpers raise RuntimeError~~ — ✅ Return error dicts in docker/aws/server
+4. ~~aws ec2_manage raises ValueError~~ — ✅ Returns error dict
+
+### Important (7/7 fixed):
+5. ~~Deprecated asyncio.get_event_loop()~~ — ✅ Replaced with get_running_loop() in 5 modules
+6. ~~data_tools sync polars~~ — ✅ Wrapped in run_in_executor
+7. ~~media_tools sync Pillow/ffmpeg~~ — ✅ Wrapped in run_in_executor
+8. ~~code_tools no output cap~~ — ✅ Added 50KB cap
+9. ~~browser_tools playwright leak~~ — ✅ Store instance, call stop() on cleanup
+10. ~~scraping web.search no Settings fallback~~ — ✅ Falls back to brave_search_api_key
+11. ~~browser_tools ignores config~~ — ✅ Reads headless/max_pages from Settings
+
+---
+
 ## Phase 6A Code Review — ALL RESOLVED
 
 7 findings from final code review, all fixed in commit `75806a9`:
@@ -337,7 +395,7 @@ Phase 6A: TOOL_EXECUTION_TIMEOUT_SECONDS(60), TOOL_MAX_CONCURRENT(10), TOOL_AUDI
 | 4 | Command Chain | ✅ Complete + Merged | 316 tests, 8 modules, 5 review fixes |
 | 5 | Quality Gate | ✅ Complete + Merged | 369 tests, 6 modules, 6 review fixes |
 | 6A | Tool Framework | ✅ Complete + Merged | 465 tests, 15 tools, 3-layer architecture, 7 review fixes |
-| 6B | Full Tool Arsenal | Not started | Browser, email, calendar, AWS, Docker, DB, data, media, OpenAPI |
+| 6B | Full Tool Arsenal | ✅ Complete + Merged | 949 tests, 65 new tools, OpenAPI provider, 11 review fixes |
 | 7 | Evolution System | Not started | Depends on all above |
 
 **Post-build:** Anti-degradation strategy (Venu has ideas, wants system built first)
