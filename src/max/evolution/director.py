@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from max.llm.client import LLMClient
     from max.memory.coordinator_state import CoordinatorStateManager
     from max.quality.store import QualityStore
+    from max.sentinel.scorer import SentinelScorer
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class EvolutionDirectorAgent:
         settings: Settings,
         state_manager: CoordinatorStateManager,
         task_store: TaskStore,
+        sentinel_scorer: SentinelScorer | None = None,
     ) -> None:
         self._llm = llm
         self._bus = bus
@@ -68,6 +70,7 @@ class EvolutionDirectorAgent:
         self._settings = settings
         self._state_manager = state_manager
         self._task_store = task_store
+        self._sentinel_scorer = sentinel_scorer
 
         # Instance state
         self._consecutive_drops: int = 0
@@ -80,6 +83,21 @@ class EvolutionDirectorAgent:
         await self._bus.subscribe("evolution.trigger", self._on_trigger)
         await self._bus.subscribe("evolution.proposal", self._on_proposal)
         logger.info("EvolutionDirectorAgent started and subscribed to bus channels")
+
+    async def load_persisted_state(self) -> None:
+        """Load persisted state from journal on startup."""
+        entries = await self._evo_store.get_journal(limit=1)
+        if entries:
+            last = entries[0]
+            if last.get("action") == "freeze":
+                self._frozen = True
+                self._consecutive_drops = last.get("details", {}).get(
+                    "consecutive_drops", self._settings.evolution_freeze_consecutive_drops
+                )
+                logger.info(
+                    "Loaded persisted freeze state (consecutive_drops=%d)",
+                    self._consecutive_drops,
+                )
 
     async def _on_trigger(self, channel: str, data: dict[str, Any]) -> None:
         """Handle scheduled or manual evolution triggers.
@@ -168,12 +186,19 @@ class EvolutionDirectorAgent:
             EvolutionJournalEntry(
                 experiment_id=None,
                 action="freeze",
-                details={"reason": reason},
+                details={
+                    "reason": reason,
+                    "consecutive_drops": self._consecutive_drops,
+                },
             )
         )
         await self._bus.publish(
             "evolution.freeze", {"frozen": True, "reason": reason}
         )
+        await self._state_manager.update_evolution_state({
+            "evolution_frozen": True,
+            "freeze_reason": reason,
+        })
 
     async def unfreeze(self) -> None:
         """Unfreeze the evolution pipeline, allowing experiments to resume."""
@@ -192,6 +217,10 @@ class EvolutionDirectorAgent:
             )
         )
         await self._bus.publish("evolution.unfreeze", {"frozen": False})
+        await self._state_manager.update_evolution_state({
+            "evolution_frozen": False,
+            "freeze_reason": None,
+        })
 
     # ── Full Pipeline ─────────────────────────────────────────────────────
 
@@ -230,6 +259,10 @@ class EvolutionDirectorAgent:
             # Step 3: Snapshot
             snapshot_id = await self._snapshot_manager.capture(experiment_id)
 
+            # Step 3a: Sentinel baseline (before any changes)
+            if self._sentinel_scorer is not None:
+                await self._sentinel_scorer.run_baseline(experiment_id)
+
             # Step 4: Implement
             changeset = await self._improver.implement(proposal)
 
@@ -244,39 +277,56 @@ class EvolutionDirectorAgent:
                 await self._evo_store.discard_candidates(experiment_id)
                 return
 
-            # Step 6: Canary
-            recent_tasks = await self._task_store.get_active_tasks()
-            task_ids = [
-                t["id"] for t in recent_tasks
-                if isinstance(t.get("id"), uuid.UUID)
-            ]
-            # Fall back to parsing string UUIDs
-            for t in recent_tasks:
-                tid = t.get("id")
-                if isinstance(tid, str):
-                    try:
-                        task_ids.append(uuid.UUID(tid))
-                    except ValueError:
-                        pass
+            # Step 5a: Sentinel candidate run (after implementation)
+            if self._sentinel_scorer is not None:
+                await self._sentinel_scorer.run_candidate(experiment_id)
 
-            canary_request = CanaryRequest(
-                experiment_id=experiment_id,
-                task_ids=task_ids[:self._settings.evolution_canary_replay_count],
-                candidate_config={},
-                timeout_seconds=self._settings.evolution_canary_timeout_seconds,
-            )
-            canary_result = await self._canary_runner.run(canary_request)
-
-            # Step 7: Promote or Rollback
-            if canary_result.overall_passed:
-                await self._promote(experiment_id, proposal, canary_result)
-            else:
-                await self._rollback(
-                    experiment_id,
-                    proposal,
-                    snapshot_id,
-                    reason="Canary test failed",
+            # Step 6: Sentinel evaluation (replaces canary)
+            if self._sentinel_scorer is not None:
+                sentinel_verdict = await self._sentinel_scorer.compare_and_verdict(
+                    experiment_id
                 )
+                if sentinel_verdict.passed:
+                    await self._promote(experiment_id, proposal, sentinel_verdict)
+                else:
+                    await self._rollback(
+                        experiment_id,
+                        proposal,
+                        snapshot_id,
+                        reason=f"Sentinel verdict failed: {sentinel_verdict.summary}",
+                    )
+            else:
+                # Fallback to canary if sentinel not configured
+                recent_tasks = await self._task_store.get_active_tasks()
+                task_ids = [
+                    t["id"] for t in recent_tasks
+                    if isinstance(t.get("id"), uuid.UUID)
+                ]
+                for t in recent_tasks:
+                    tid = t.get("id")
+                    if isinstance(tid, str):
+                        try:
+                            task_ids.append(uuid.UUID(tid))
+                        except ValueError:
+                            pass
+
+                canary_request = CanaryRequest(
+                    experiment_id=experiment_id,
+                    task_ids=task_ids[:self._settings.evolution_canary_replay_count],
+                    candidate_config={},
+                    timeout_seconds=self._settings.evolution_canary_timeout_seconds,
+                )
+                canary_result = await self._canary_runner.run(canary_request)
+
+                if canary_result.overall_passed:
+                    await self._promote(experiment_id, proposal, canary_result)
+                else:
+                    await self._rollback(
+                        experiment_id,
+                        proposal,
+                        snapshot_id,
+                        reason="Canary test failed",
+                    )
 
         except Exception:
             logger.error(
@@ -301,7 +351,7 @@ class EvolutionDirectorAgent:
         self,
         experiment_id: uuid.UUID,
         proposal: EvolutionProposal,
-        canary_result: CanaryResult,
+        canary_or_verdict: Any,
     ) -> None:
         """Promote candidate changes to production."""
         await self._evo_store.promote_candidates(experiment_id)
@@ -321,7 +371,8 @@ class EvolutionDirectorAgent:
                 details={
                     "proposal_id": str(proposal.id),
                     "description": proposal.description,
-                    "canary_duration": canary_result.duration_seconds,
+                    "verdict_summary": getattr(canary_or_verdict, "summary", ""),
+                    "duration": getattr(canary_or_verdict, "duration_seconds", 0.0),
                 },
             )
         )
@@ -329,6 +380,10 @@ class EvolutionDirectorAgent:
             "evolution.promoted",
             event.model_dump(mode="json"),
         )
+        # Sync CoordinatorState (Task 10 gap fix)
+        await self._state_manager.update_evolution_state({
+            "last_promotion": event.model_dump(mode="json"),
+        })
         logger.info(
             "Experiment %s PROMOTED for proposal %s",
             experiment_id,
@@ -372,6 +427,9 @@ class EvolutionDirectorAgent:
             "evolution.rolled_back",
             event.model_dump(mode="json"),
         )
+        await self._state_manager.update_evolution_state({
+            "last_rollback": event.model_dump(mode="json"),
+        })
         logger.info(
             "Experiment %s ROLLED BACK for proposal %s: %s",
             experiment_id,
