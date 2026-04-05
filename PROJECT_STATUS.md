@@ -1,8 +1,8 @@
 # Max — Project Status
 
 > **Last updated:** 2026-04-04
-> **Current phase:** Phase 3 Complete + Merged, Phase 4 not started
-> **Branch:** `master` (Phase 1 + Phase 2 + Phase 3 merged)
+> **Current phase:** Phase 4 Complete + Merged, Phase 5 not started
+> **Branch:** `master` (Phase 1 + Phase 2 + Phase 3 + Phase 4 merged)
 
 ---
 
@@ -13,8 +13,9 @@
 1. Read this file first
 2. Check `docs/superpowers/specs/2026-04-04-max-design.md` for the full design spec
 3. Check `docs/superpowers/specs/2026-04-04-max-phase3-communication-layer.md` for Phase 3 design spec
-4. Check `docs/superpowers/plans/2026-04-04-max-phase3-communication-layer.md` for Phase 3 plan (completed)
-5. **Next step:** Brainstorm + write Phase 4 (Command Chain) spec and plan, then execute
+4. Check `docs/superpowers/specs/2026-04-05-max-phase4-command-chain.md` for Phase 4 design spec
+5. Check `docs/superpowers/plans/2026-04-05-max-phase4-command-chain.md` for Phase 4 plan (completed)
+6. **Next step:** Brainstorm + write Phase 5 (Quality Gate) spec and plan, then execute
 
 ---
 
@@ -28,6 +29,8 @@
 - `docs/superpowers/plans/2026-04-04-max-phase1-critical-fixes.md` — Phase 1 fixes plan (completed)
 - `docs/superpowers/plans/2026-04-04-max-phase2-memory-system.md` — Phase 2 plan (13 tasks, completed)
 - `docs/superpowers/plans/2026-04-04-max-phase3-communication-layer.md` — Phase 3 plan (11 tasks, completed)
+- `docs/superpowers/specs/2026-04-05-max-phase4-command-chain.md` — Phase 4 command chain design spec
+- `docs/superpowers/plans/2026-04-05-max-phase4-command-chain.md` — Phase 4 plan (10 tasks, completed)
 - `RESEARCH.md` — OpenClaw research
 
 ### Phase 1: Core Foundation (Complete + Merged)
@@ -104,16 +107,52 @@ Key features:
 - Outbound formatter with HTML formatting and inline keyboards
 - Conversation persistence in PostgreSQL
 
-### Database Schema (12 tables)
+### Phase 4: Command Chain (Complete + Merged)
+
+```
+src/max/command/
+├── __init__.py               # Package exports (13 public symbols)
+├── models.py                 # CoordinatorAction, ExecutionPlan, PlannedSubtask, SubtaskResult, WorkerConfig
+├── task_store.py             # TaskStore: async CRUD for tasks/subtasks over PostgreSQL
+├── worker.py                 # WorkerAgent: ephemeral per-subtask agent with JSON response parsing
+├── runner.py                 # AgentRunner ABC + InProcessRunner (future SubprocessRunner in Phase 6)
+├── coordinator.py            # CoordinatorAgent: intent classification, routing, state management
+├── planner.py                # PlannerAgent: task decomposition with clarification flow
+└── orchestrator.py           # OrchestratorAgent: phased execution, retry, cancellation
+
+src/max/db/migrations/
+├── 002_memory_system.sql
+├── 003_communication.sql
+└── 004_command_chain.sql     # ALTER subtasks (6 cols) + ALTER tasks (priority)
+```
+
+**316 tests passing (69 new), lint/format clean.**
+
+Key features:
+- Three-agent pipeline: Coordinator → Planner → Orchestrator + Workers
+- CoordinatorAgent classifies intents via LLM into 5 action types (create/query/cancel/context/clarify)
+- PlannerAgent decomposes tasks into phased subtasks with clarification support
+- OrchestratorAgent runs phases sequentially, subtasks concurrently within phases
+- Cooperative cancellation via `_cancelled_tasks` set checked per retry attempt
+- Configurable retry (worker_max_retries) and timeout (worker_timeout_seconds)
+- AgentRunner abstraction enables future subprocess/container isolation
+- TaskStore with _parse_jsonb helper for asyncpg JSONB deserialization
+- Enforced coordinator_max_active_tasks limit
+- TTL-based eviction for stale pending clarifications
+- Defensive guards on all bus message parsing
+
+### Database Schema (12 tables + alterations)
 Phase 1: tasks, subtasks, audit_reports, intents, results, status_updates, clarification_requests, context_anchors, quality_ledger, memory_embeddings
 Phase 2: graph_nodes, graph_edges, compaction_log, performance_metrics, shelved_improvements
 Phase 2 ALTERs: context_anchors (9 new lifecycle/permanence columns), memory_embeddings (8 new columns + FTS)
 Phase 3: conversation_messages
+Phase 4 ALTERs: subtasks (phase_number, tool_categories, worker_agent_id, retry_count, quality_criteria, estimated_complexity), tasks (priority)
 
 ### Config (env vars)
 Phase 1: ANTHROPIC_API_KEY, POSTGRES_*, REDIS_*
 Phase 2: VOYAGE_API_KEY, MEMORY_COMPACTION_INTERVAL_SECONDS(60), MEMORY_WARM_BUDGET_TOKENS(100000), MEMORY_GRAPH_CACHE_MAX_NODES(500), MEMORY_EMBEDDING_DIMENSION(1024), MEMORY_ANCHOR_RE_EVALUATION_INTERVAL_HOURS(6)
 Phase 3: TELEGRAM_BOT_TOKEN, COMM_BATCH_INTERVAL_SECONDS(30), COMM_MAX_BATCH_SIZE(10), COMM_CONTEXT_WINDOW_SIZE(20), COMM_MEDIA_DIR, COMM_WEBHOOK_ENABLED(False), COMM_WEBHOOK_HOST/PORT/PATH/URL/SECRET
+Phase 4: COORDINATOR_MODEL(claude-opus-4-6), PLANNER_MODEL, ORCHESTRATOR_MODEL, WORKER_MODEL, COORDINATOR_MAX_ACTIVE_TASKS(5), PLANNER_MAX_SUBTASKS(10), WORKER_MAX_RETRIES(2), WORKER_TIMEOUT_SECONDS(300)
 
 ---
 
@@ -150,11 +189,30 @@ Phase 3: TELEGRAM_BOT_TOKEN, COMM_BATCH_INTERVAL_SECONDS(30), COMM_MAX_BATCH_SIZ
 3. ~~No periodic flush for batched SILENT messages~~ — ✅ Added `_periodic_flush()` asyncio task
 4. ~~Injection warning in user prompt (attackable)~~ — ✅ Moved to system prompt
 
-### Deferred to Phase 4+:
+### Deferred to Phase 5+:
 - S2: Callback missing option text + edit_message
 - S3: scan_result not persisted to DB
 - S4: CommunicationState enum for connection lifecycle
 - S6: _get_task_goal DB coupling in CommunicatorAgent
+
+---
+
+## Phase 4 Code Review — ALL RESOLVED
+
+5 findings from final code review, all fixed in commit `6d8ad06`:
+
+### Important (5/5 fixed):
+1. ~~Error messages lost (prior_results only has successes)~~ — ✅ Track failed_results separately
+2. ~~_cancelled_tasks grows unboundedly~~ — ✅ discard(task_id) after execution completes
+3. ~~_pending_clarifications grows unboundedly~~ — ✅ TTL-based eviction (1 hour)
+4. ~~Missing defensive guards on bus message task_id~~ — ✅ data.get() + guard in Coordinator, Planner, Orchestrator
+5. ~~coordinator_max_active_tasks never enforced~~ — ✅ Reject with status message when at capacity
+
+### Suggestions (deferred):
+- S1: Consolidate duplicate JSON parsing across agents
+- S2: _handle_query_status uses fabricated task_id
+- S3: Per-agent model config settings defined but unused (wiring needed in app factory)
+- S4: InProcessRunner.run doesn't pass context to WorkerAgent
 
 ---
 
@@ -165,8 +223,8 @@ Phase 3: TELEGRAM_BOT_TOKEN, COMM_BATCH_INTERVAL_SECONDS(30), COMM_MAX_BATCH_SIZ
 | 1 | Core Foundation | ✅ Complete + Merged | All 12 review findings fixed |
 | 2 | Memory System | ✅ Complete + Merged | All 14 review findings addressed |
 | 3 | Communication Layer | ✅ Complete + Merged | 247 tests, 7 modules, 4 review fixes |
-| 4 | Command Chain | Not started | Brainstorm → write plan → implement |
-| 5 | Quality Gate | Not started | Depends on Phase 4 |
+| 4 | Command Chain | ✅ Complete + Merged | 316 tests, 8 modules, 5 review fixes |
+| 5 | Quality Gate | Not started | Brainstorm → write plan → implement |
 | 6 | Tool Arsenal | Not started | Depends on Phase 4 |
 | 7 | Evolution System | Not started | Depends on all above |
 
