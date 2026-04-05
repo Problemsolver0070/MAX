@@ -43,9 +43,9 @@ AUDITOR_SYSTEM_PROMPT_TEMPLATE = (
     "- score: overall quality (0.0 = terrible, 1.0 = perfect)\n"
     "- goal_alignment: how well the output achieves the stated goal\n"
     "- confidence: how confident you are in your assessment\n"
-    "- verdict: \"pass\" if score >= 0.7 and no critical issues, "
-    "\"fail\" if score < 0.5 or any critical issue, "
-    "\"conditional\" otherwise"
+    '- verdict: "pass" if score >= 0.7 and no critical issues, '
+    '"fail" if score < 0.5 or any critical issue, '
+    '"conditional" otherwise'
 )
 
 
@@ -80,9 +80,7 @@ class AuditorAgent(BaseAgent):
         criteria_str = (
             json.dumps(quality_criteria, indent=2) if quality_criteria else "None specified"
         )
-        rules_str = (
-            "\n".join(f"- {r['rule']}" for r in quality_rules) if quality_rules else "None"
-        )
+        rules_str = "\n".join(f"- {r['rule']}" for r in quality_rules) if quality_rules else "None"
 
         prompt = AUDITOR_SYSTEM_PROMPT_TEMPLATE.format(
             goal_anchor=goal_anchor,

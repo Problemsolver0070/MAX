@@ -66,12 +66,9 @@ class TestExtractRules:
     async def test_caps_rules_at_max(self, mock_store):
         llm = AsyncMock()
         many_rules = [
-            {"rule": f"Rule {i}", "category": "test", "severity": "normal"}
-            for i in range(10)
+            {"rule": f"Rule {i}", "category": "test", "severity": "normal"} for i in range(10)
         ]
-        llm.complete = AsyncMock(
-            return_value=_make_llm_response({"rules": many_rules})
-        )
+        llm.complete = AsyncMock(return_value=_make_llm_response({"rules": many_rules}))
         engine = RuleEngine(llm=llm, quality_store=mock_store, max_rules_per_audit=3)
         rules = await engine.extract_rules(
             audit_id=uuid.uuid4(),

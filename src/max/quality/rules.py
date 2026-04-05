@@ -124,9 +124,7 @@ class RuleEngine:
                 severity=severity,
                 source_audit_id=audit_id,
             )
-            result.append(
-                {"rule_id": str(rule_id), "rule": rule_text, "category": category}
-            )
+            result.append({"rule_id": str(rule_id), "rule": rule_text, "category": category})
 
         return result
 
@@ -174,15 +172,11 @@ class RuleEngine:
                 category=category,
                 source_task_id=task_id,
             )
-            result.append(
-                {"pattern_id": str(pattern_id), "pattern": pattern_text}
-            )
+            result.append({"pattern_id": str(pattern_id), "pattern": pattern_text})
 
         return result
 
-    async def get_rules_for_audit(
-        self, category: str | None = None
-    ) -> list[dict[str, Any]]:
+    async def get_rules_for_audit(self, category: str | None = None) -> list[dict[str, Any]]:
         """Get active quality rules for inclusion in auditor prompts."""
         return await self._store.get_active_rules(category=category)
 

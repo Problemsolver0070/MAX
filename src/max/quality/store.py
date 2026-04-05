@@ -61,9 +61,7 @@ class QualityStore:
             task_id,
         )
 
-    async def get_audit_report_for_subtask(
-        self, subtask_id: uuid.UUID
-    ) -> dict[str, Any] | None:
+    async def get_audit_report_for_subtask(self, subtask_id: uuid.UUID) -> dict[str, Any] | None:
         """Get the most recent audit report for a subtask."""
         return await self._db.fetchone(
             "SELECT * FROM audit_reports WHERE subtask_id = $1 ORDER BY created_at DESC LIMIT 1",
@@ -139,13 +137,10 @@ class QualityStore:
             json.dumps(content),
         )
 
-    async def get_ledger_entries(
-        self, entry_type: str, limit: int = 100
-    ) -> list[dict[str, Any]]:
+    async def get_ledger_entries(self, entry_type: str, limit: int = 100) -> list[dict[str, Any]]:
         """Get ledger entries by type."""
         return await self._db.fetchall(
-            "SELECT * FROM quality_ledger WHERE entry_type = $1 "
-            "ORDER BY created_at DESC LIMIT $2",
+            "SELECT * FROM quality_ledger WHERE entry_type = $1 ORDER BY created_at DESC LIMIT $2",
             entry_type,
             limit,
         )
@@ -171,9 +166,7 @@ class QualityStore:
             severity,
         )
 
-    async def get_active_rules(
-        self, category: str | None = None
-    ) -> list[dict[str, Any]]:
+    async def get_active_rules(self, category: str | None = None) -> list[dict[str, Any]]:
         """Get all non-superseded quality rules."""
         if category:
             return await self._db.fetchall(
@@ -182,13 +175,10 @@ class QualityStore:
                 category,
             )
         return await self._db.fetchall(
-            "SELECT * FROM quality_rules WHERE superseded_by IS NULL "
-            "ORDER BY created_at DESC"
+            "SELECT * FROM quality_rules WHERE superseded_by IS NULL ORDER BY created_at DESC"
         )
 
-    async def supersede_rule(
-        self, old_rule_id: uuid.UUID, new_rule_id: uuid.UUID
-    ) -> None:
+    async def supersede_rule(self, old_rule_id: uuid.UUID, new_rule_id: uuid.UUID) -> None:
         """Mark an old rule as superseded by a new one."""
         await self._db.execute(
             "UPDATE quality_rules SET superseded_by = $1 WHERE id = $2",
