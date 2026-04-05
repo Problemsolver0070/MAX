@@ -96,3 +96,14 @@ def test_command_chain_settings_defaults(settings):
     assert settings.planner_max_subtasks == 10
     assert settings.worker_max_retries == 2
     assert settings.worker_timeout_seconds == 300
+
+
+def test_quality_gate_settings_defaults(settings):
+    assert settings.quality_director_model == "claude-opus-4-6"
+    assert settings.auditor_model == "claude-opus-4-6"
+    assert settings.quality_max_fix_attempts == 2
+    assert settings.quality_audit_timeout_seconds == 120
+    assert settings.quality_pass_threshold == 0.7
+    assert settings.quality_high_score_threshold == 0.9
+    assert settings.quality_max_rules_per_audit == 5
+    assert settings.quality_max_recent_verdicts == 50

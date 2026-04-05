@@ -70,6 +70,16 @@ class Settings(BaseSettings):
     worker_max_retries: int = 2
     worker_timeout_seconds: int = 300
 
+    # Quality Gate
+    quality_director_model: str = "claude-opus-4-6"
+    auditor_model: str = "claude-opus-4-6"
+    quality_max_fix_attempts: int = 2
+    quality_audit_timeout_seconds: int = 120
+    quality_pass_threshold: float = 0.7
+    quality_high_score_threshold: float = 0.9
+    quality_max_rules_per_audit: int = 5
+    quality_max_recent_verdicts: int = 50
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
