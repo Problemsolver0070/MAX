@@ -11,7 +11,6 @@ from max.tools.native.server_tools import (
     handle_server_system_info,
 )
 
-
 # ── Tool Definition Tests ────────────────────────────────────────────────
 
 
@@ -150,10 +149,12 @@ class TestServerSSHExecute:
         with patch("max.tools.native.server_tools.asyncssh") as mock_asyncssh:
             mock_asyncssh.connect = MagicMock(return_value=mock_conn)
             with patch("max.tools.native.server_tools.HAS_ASYNCSSH", True):
-                result = await handle_server_ssh_execute({
-                    "host": "192.168.1.10",
-                    "command": "echo hello world",
-                })
+                result = await handle_server_ssh_execute(
+                    {
+                        "host": "192.168.1.10",
+                        "command": "echo hello world",
+                    }
+                )
 
         assert result["stdout"] == "hello world\n"
         assert result["stderr"] == ""
@@ -181,14 +182,16 @@ class TestServerSSHExecute:
         with patch("max.tools.native.server_tools.asyncssh") as mock_asyncssh:
             mock_asyncssh.connect = MagicMock(return_value=mock_conn)
             with patch("max.tools.native.server_tools.HAS_ASYNCSSH", True):
-                result = await handle_server_ssh_execute({
-                    "host": "example.com",
-                    "command": "ls -la",
-                    "port": 2222,
-                    "username": "admin",
-                    "password": "secret",
-                    "key_file": "/home/user/.ssh/id_rsa",
-                })
+                result = await handle_server_ssh_execute(
+                    {
+                        "host": "example.com",
+                        "command": "ls -la",
+                        "port": 2222,
+                        "username": "admin",
+                        "password": "secret",
+                        "key_file": "/home/user/.ssh/id_rsa",
+                    }
+                )
 
         mock_asyncssh.connect.assert_called_once_with(
             host="example.com",
@@ -215,10 +218,12 @@ class TestServerSSHExecute:
         with patch("max.tools.native.server_tools.asyncssh") as mock_asyncssh:
             mock_asyncssh.connect = MagicMock(return_value=mock_conn)
             with patch("max.tools.native.server_tools.HAS_ASYNCSSH", True):
-                result = await handle_server_ssh_execute({
-                    "host": "host",
-                    "command": "badcmd",
-                })
+                result = await handle_server_ssh_execute(
+                    {
+                        "host": "host",
+                        "command": "badcmd",
+                    }
+                )
 
         assert result["stderr"] == "command not found\n"
         assert result["exit_code"] == 127
@@ -240,10 +245,12 @@ class TestServerSSHExecute:
         with patch("max.tools.native.server_tools.asyncssh") as mock_asyncssh:
             mock_asyncssh.connect = MagicMock(return_value=mock_conn)
             with patch("max.tools.native.server_tools.HAS_ASYNCSSH", True):
-                result = await handle_server_ssh_execute({
-                    "host": "host",
-                    "command": "big-output",
-                })
+                result = await handle_server_ssh_execute(
+                    {
+                        "host": "host",
+                        "command": "big-output",
+                    }
+                )
 
         assert len(result["stdout"]) == 50_000
         assert len(result["stderr"]) == 50_000
@@ -264,10 +271,12 @@ class TestServerSSHExecute:
         with patch("max.tools.native.server_tools.asyncssh") as mock_asyncssh:
             mock_asyncssh.connect = MagicMock(return_value=mock_conn)
             with patch("max.tools.native.server_tools.HAS_ASYNCSSH", True):
-                result = await handle_server_ssh_execute({
-                    "host": "host",
-                    "command": "true",
-                })
+                result = await handle_server_ssh_execute(
+                    {
+                        "host": "host",
+                        "command": "true",
+                    }
+                )
 
         assert result["stdout"] == ""
         assert result["stderr"] == ""
@@ -289,10 +298,12 @@ class TestServerSSHExecute:
         with patch("max.tools.native.server_tools.asyncssh") as mock_asyncssh:
             mock_asyncssh.connect = MagicMock(return_value=mock_conn)
             with patch("max.tools.native.server_tools.HAS_ASYNCSSH", True):
-                result = await handle_server_ssh_execute({
-                    "host": "host",
-                    "command": "true",
-                })
+                result = await handle_server_ssh_execute(
+                    {
+                        "host": "host",
+                        "command": "true",
+                    }
+                )
 
         assert result["exit_code"] == 0
 
@@ -316,8 +327,11 @@ class TestServerServiceStatus:
         assert result["exit_code"] == 0
 
         mock_exec.assert_called_once_with(
-            "systemctl", "is-active", "nginx",
-            stdout=-1, stderr=-1,
+            "systemctl",
+            "is-active",
+            "nginx",
+            stdout=-1,
+            stderr=-1,
         )
 
     @pytest.mark.asyncio
@@ -384,10 +398,12 @@ class TestMissingAsyncSSHDependency:
     async def test_ssh_execute_no_asyncssh(self):
         with patch("max.tools.native.server_tools.HAS_ASYNCSSH", False):
             with pytest.raises(RuntimeError, match="asyncssh library is not installed"):
-                await handle_server_ssh_execute({
-                    "host": "example.com",
-                    "command": "ls",
-                })
+                await handle_server_ssh_execute(
+                    {
+                        "host": "example.com",
+                        "command": "ls",
+                    }
+                )
 
     @pytest.mark.asyncio
     async def test_system_info_works_without_asyncssh(self):

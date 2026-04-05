@@ -30,7 +30,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="web.scrape",
         category="web",
-        description="Scrape a URL and extract its text content. Optionally narrow to a CSS selector.",
+        description="Scrape a URL and extract text, optionally scoped by CSS selector.",
         permissions=["network.http"],
         provider_id="native",
         input_schema={
@@ -48,7 +48,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="web.extract_links",
         category="web",
-        description="Extract all hyperlinks from a URL. Optionally resolve relative URLs with a base URL.",
+        description="Extract all hyperlinks from a URL, optionally resolving relative links.",
         permissions=["network.http"],
         provider_id="native",
         input_schema={
@@ -66,7 +66,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="web.search",
         category="web",
-        description="Search the web using Brave Search API. Returns titles, URLs, and descriptions.",
+        description="Search the web via Brave Search API. Returns titles, URLs, and snippets.",
         permissions=["network.http"],
         provider_id="native",
         input_schema={
@@ -80,7 +80,7 @@ TOOL_DEFINITIONS = [
                 },
                 "api_key": {
                     "type": "string",
-                    "description": "Brave Search API key (optional, uses configured key if omitted)",
+                    "description": "Brave Search API key (uses configured key if omitted)",
                 },
             },
             "required": ["query"],
@@ -180,7 +180,12 @@ async def handle_web_search(inputs: dict[str, Any]) -> dict[str, Any]:
     api_key = inputs.get("api_key", "")
 
     if not api_key:
-        return {"error": "Brave Search API key required. Pass api_key or configure Settings.brave_search_api_key."}
+        return {
+            "error": (
+                "Brave Search API key required. "
+                "Pass api_key or configure Settings.brave_search_api_key."
+            )
+        }
 
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:

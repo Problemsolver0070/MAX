@@ -73,7 +73,10 @@ TOOL_DEFINITIONS = [
         input_schema={
             "type": "object",
             "properties": {
-                "to": {"type": "string", "description": "Recipient email address(es), comma-separated"},
+                "to": {
+                    "type": "string",
+                    "description": "Recipient email address(es), comma-separated",
+                },
                 "subject": {"type": "string", "description": "Email subject"},
                 "body": {"type": "string", "description": "Email body text"},
                 "cc": {"type": "string", "description": "CC recipients, comma-separated"},
@@ -96,7 +99,11 @@ TOOL_DEFINITIONS = [
             "type": "object",
             "properties": {
                 "folder": {"type": "string", "description": "Mailbox folder", "default": "INBOX"},
-                "count": {"type": "integer", "description": "Number of recent messages to fetch", "default": 10},
+                "count": {
+                    "type": "integer",
+                    "description": "Number of recent messages to fetch",
+                    "default": 10,
+                },
                 "imap_host": {"type": "string", "description": "IMAP server hostname"},
                 "user": {"type": "string", "description": "IMAP username"},
                 "password": {"type": "string", "description": "IMAP password"},
@@ -112,7 +119,10 @@ TOOL_DEFINITIONS = [
         input_schema={
             "type": "object",
             "properties": {
-                "criteria": {"type": "string", "description": "IMAP SEARCH criteria (e.g. 'FROM alice SUBJECT hello')"},
+                "criteria": {
+                    "type": "string",
+                    "description": "IMAP SEARCH criteria (e.g. 'FROM alice SUBJECT hello')",
+                },
                 "folder": {"type": "string", "description": "Mailbox folder", "default": "INBOX"},
                 "imap_host": {"type": "string", "description": "IMAP server hostname"},
                 "user": {"type": "string", "description": "IMAP username"},
@@ -140,6 +150,7 @@ TOOL_DEFINITIONS = [
 
 
 # ── IMAP helpers ──────────────────────────────────────────────────────
+
 
 async def _imap_connect(host: str, user: str, password: str) -> Any:
     """Create an IMAP4_SSL connection, wait for greeting, and login."""
@@ -196,13 +207,13 @@ def _extract_message_bytes(fetch_lines: list[Any]) -> list[bytes]:
     """
     import re
 
-    _FETCH_META = re.compile(rb"^\d+\s+FETCH\s+\(")
+    fetch_meta = re.compile(rb"^\d+\s+FETCH\s+\(")
 
     messages: list[bytes] = []
     for line in fetch_lines:
         if isinstance(line, bytes) and line.strip():
             # Skip IMAP protocol metadata lines
-            if _FETCH_META.match(line):
+            if fetch_meta.match(line):
                 continue
             messages.append(line)
     return messages
@@ -226,6 +237,7 @@ def _parse_folder_name(line: str) -> str | None:
 
 
 # ── Handlers ──────────────────────────────────────────────────────────
+
 
 async def handle_email_send(inputs: dict[str, Any]) -> dict[str, Any]:
     """Send an email via SMTP."""

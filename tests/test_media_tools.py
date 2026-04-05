@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +14,6 @@ from max.tools.native.media_tools import (
     handle_media_image_resize,
     handle_media_video_info,
 )
-
 
 # ── Tool definition tests ───────────────────────────────────────────
 
@@ -65,11 +63,13 @@ class TestImageResize:
         src = tmp_path / "input.png"
         Image.new("RGB", (10, 10), "red").save(str(src))
 
-        result = await handle_media_image_resize({
-            "path": str(src),
-            "width": 5,
-            "height": 5,
-        })
+        result = await handle_media_image_resize(
+            {
+                "path": str(src),
+                "width": 5,
+                "height": 5,
+            }
+        )
 
         assert result["width"] == 5
         assert result["height"] == 5
@@ -88,12 +88,14 @@ class TestImageResize:
         out = tmp_path / "output.png"
         Image.new("RGB", (20, 20), "blue").save(str(src))
 
-        result = await handle_media_image_resize({
-            "path": str(src),
-            "width": 8,
-            "height": 8,
-            "output_path": str(out),
-        })
+        result = await handle_media_image_resize(
+            {
+                "path": str(src),
+                "width": 8,
+                "height": 8,
+                "output_path": str(out),
+            }
+        )
 
         assert result["path"] == str(out)
         assert result["width"] == 8
@@ -106,22 +108,26 @@ class TestImageResize:
 
     @pytest.mark.asyncio
     async def test_resize_file_not_found(self):
-        result = await handle_media_image_resize({
-            "path": "/nonexistent/image.png",
-            "width": 10,
-            "height": 10,
-        })
+        result = await handle_media_image_resize(
+            {
+                "path": "/nonexistent/image.png",
+                "width": 10,
+                "height": 10,
+            }
+        )
         assert "error" in result
         assert "not found" in result["error"].lower() or "No such file" in result["error"]
 
     @pytest.mark.asyncio
     async def test_resize_no_pillow(self):
         with patch("max.tools.native.media_tools.HAS_PILLOW", False):
-            result = await handle_media_image_resize({
-                "path": "/any/path.png",
-                "width": 10,
-                "height": 10,
-            })
+            result = await handle_media_image_resize(
+                {
+                    "path": "/any/path.png",
+                    "width": 10,
+                    "height": 10,
+                }
+            )
             assert "error" in result
             assert "Pillow" in result["error"]
 
@@ -139,10 +145,12 @@ class TestImageConvert:
         out = tmp_path / "output.jpg"
         Image.new("RGB", (10, 10), "green").save(str(src))
 
-        result = await handle_media_image_convert({
-            "path": str(src),
-            "output_path": str(out),
-        })
+        result = await handle_media_image_convert(
+            {
+                "path": str(src),
+                "output_path": str(out),
+            }
+        )
 
         assert result["path"] == str(out)
         assert result["format"] == "JPEG"
@@ -157,11 +165,13 @@ class TestImageConvert:
         out = tmp_path / "output.img"
         Image.new("RGB", (10, 10), "yellow").save(str(src))
 
-        result = await handle_media_image_convert({
-            "path": str(src),
-            "output_path": str(out),
-            "format": "BMP",
-        })
+        result = await handle_media_image_convert(
+            {
+                "path": str(src),
+                "output_path": str(out),
+                "format": "BMP",
+            }
+        )
 
         assert result["format"] == "BMP"
         assert out.exists()
@@ -175,10 +185,12 @@ class TestImageConvert:
         out = tmp_path / "output.jpg"
         Image.new("RGBA", (10, 10), (255, 0, 0, 128)).save(str(src))
 
-        result = await handle_media_image_convert({
-            "path": str(src),
-            "output_path": str(out),
-        })
+        result = await handle_media_image_convert(
+            {
+                "path": str(src),
+                "output_path": str(out),
+            }
+        )
 
         assert result["format"] == "JPEG"
         assert "error" not in result
@@ -192,29 +204,35 @@ class TestImageConvert:
         out = tmp_path / "output.xyz"
         Image.new("RGB", (10, 10), "red").save(str(src))
 
-        result = await handle_media_image_convert({
-            "path": str(src),
-            "output_path": str(out),
-        })
+        result = await handle_media_image_convert(
+            {
+                "path": str(src),
+                "output_path": str(out),
+            }
+        )
 
         assert "error" in result
         assert "extension" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_convert_file_not_found(self):
-        result = await handle_media_image_convert({
-            "path": "/nonexistent/image.png",
-            "output_path": "/tmp/output.jpg",
-        })
+        result = await handle_media_image_convert(
+            {
+                "path": "/nonexistent/image.png",
+                "output_path": "/tmp/output.jpg",
+            }
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_convert_no_pillow(self):
         with patch("max.tools.native.media_tools.HAS_PILLOW", False):
-            result = await handle_media_image_convert({
-                "path": "/any/path.png",
-                "output_path": "/tmp/out.jpg",
-            })
+            result = await handle_media_image_convert(
+                {
+                    "path": "/any/path.png",
+                    "output_path": "/tmp/out.jpg",
+                }
+            )
             assert "error" in result
             assert "Pillow" in result["error"]
 
@@ -289,10 +307,12 @@ class TestAudioTranscribe:
             patch("max.tools.native.media_tools.HAS_WHISPER", True),
             patch("max.tools.native.media_tools.whisper", mock_whisper, create=True),
         ):
-            result = await handle_media_audio_transcribe({
-                "path": str(audio_file),
-                "model": "base",
-            })
+            result = await handle_media_audio_transcribe(
+                {
+                    "path": str(audio_file),
+                    "model": "base",
+                }
+            )
 
         assert result["text"] == "Hello world"
         assert result["language"] == "en"
@@ -319,11 +339,13 @@ class TestAudioTranscribe:
             patch("max.tools.native.media_tools.HAS_WHISPER", True),
             patch("max.tools.native.media_tools.whisper", mock_whisper, create=True),
         ):
-            result = await handle_media_audio_transcribe({
-                "path": str(audio_file),
-                "model": "small",
-                "language": "es",
-            })
+            result = await handle_media_audio_transcribe(
+                {
+                    "path": str(audio_file),
+                    "model": "small",
+                    "language": "es",
+                }
+            )
 
         assert result["text"] == "Hola mundo"
         assert result["language"] == "es"
@@ -352,18 +374,22 @@ class TestAudioTranscribe:
     @pytest.mark.asyncio
     async def test_transcribe_file_not_found(self):
         with patch("max.tools.native.media_tools.HAS_WHISPER", True):
-            result = await handle_media_audio_transcribe({
-                "path": "/nonexistent/audio.wav",
-            })
+            result = await handle_media_audio_transcribe(
+                {
+                    "path": "/nonexistent/audio.wav",
+                }
+            )
             assert "error" in result
             assert "not found" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_transcribe_no_whisper(self):
         with patch("max.tools.native.media_tools.HAS_WHISPER", False):
-            result = await handle_media_audio_transcribe({
-                "path": "/any/audio.wav",
-            })
+            result = await handle_media_audio_transcribe(
+                {
+                    "path": "/any/audio.wav",
+                }
+            )
             assert "error" in result
             assert "whisper" in result["error"].lower()
 
@@ -465,18 +491,22 @@ class TestVideoInfo:
     @pytest.mark.asyncio
     async def test_video_info_file_not_found(self):
         with patch("max.tools.native.media_tools.HAS_FFMPEG", True):
-            result = await handle_media_video_info({
-                "path": "/nonexistent/video.mp4",
-            })
+            result = await handle_media_video_info(
+                {
+                    "path": "/nonexistent/video.mp4",
+                }
+            )
             assert "error" in result
             assert "not found" in result["error"].lower()
 
     @pytest.mark.asyncio
     async def test_video_info_no_ffmpeg(self):
         with patch("max.tools.native.media_tools.HAS_FFMPEG", False):
-            result = await handle_media_video_info({
-                "path": "/any/video.mp4",
-            })
+            result = await handle_media_video_info(
+                {
+                    "path": "/any/video.mp4",
+                }
+            )
             assert "error" in result
             assert "ffmpeg" in result["error"].lower()
 

@@ -85,9 +85,7 @@ class OpenAPIToolProvider(ToolProvider):
         query_params: dict[str, Any] = {}
         body_params: dict[str, Any] = {}
 
-        param_locations: dict[str, str] = {
-            p["name"]: p["in"] for p in param_defs
-        }
+        param_locations: dict[str, str] = {p["name"]: p["in"] for p in param_defs}
 
         for key, value in inputs.items():
             location = param_locations.get(key)

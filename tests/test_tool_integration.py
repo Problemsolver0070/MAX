@@ -90,13 +90,14 @@ class TestToolIntegration:
 
     @pytest.mark.asyncio
     async def test_register_all_native_tools(self):
-        """All 15 native tools register correctly."""
+        """All 80 native tools register correctly."""
         provider = NativeToolProvider()
         register_all_native_tools(provider)
         tools = await provider.list_tools()
-        assert len(tools) == 15
+        assert len(tools) == 80
         tool_ids = {t.tool_id for t in tools}
-        expected = {
+        # Verify Phase 6A core tools are present
+        phase6a_tools = {
             "file.read",
             "file.write",
             "file.edit",
@@ -113,4 +114,21 @@ class TestToolIntegration:
             "process.list",
             "grep.search",
         }
-        assert expected == tool_ids
+        assert phase6a_tools.issubset(tool_ids)
+        # Verify Phase 6B tools are present
+        phase6b_samples = {
+            "code.ast_parse",
+            "browser.navigate",
+            "database.postgres_query",
+            "docker.run",
+            "document.read_pdf",
+            "aws.s3_list",
+            "email.send",
+            "calendar.list_events",
+            "data.load",
+            "media.image_resize",
+            "web.scrape",
+            "git.clone",
+            "server.system_info",
+        }
+        assert phase6b_samples.issubset(tool_ids)

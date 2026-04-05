@@ -184,7 +184,7 @@ class TestDataLoad:
     async def test_preview_max_10_rows(self, tmp_path):
         """Preview should return at most 10 rows even if file has more."""
         path = tmp_path / "big.csv"
-        lines = ["id,val"] + [f"{i},{i*10}" for i in range(50)]
+        lines = ["id,val"] + [f"{i},{i * 10}" for i in range(50)]
         path.write_text("\n".join(lines) + "\n")
         result = await handle_data_load({"path": str(path)})
         assert result["row_count"] == 50
@@ -198,20 +198,24 @@ class TestDataLoad:
 class TestDataQuery:
     @pytest.mark.asyncio
     async def test_select_all(self, sample_csv):
-        result = await handle_data_query({
-            "path": sample_csv,
-            "query": "SELECT * FROM data",
-        })
+        result = await handle_data_query(
+            {
+                "path": sample_csv,
+                "query": "SELECT * FROM data",
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 3
         assert "name" in result["columns"]
 
     @pytest.mark.asyncio
     async def test_select_with_where(self, sample_csv):
-        result = await handle_data_query({
-            "path": sample_csv,
-            "query": "SELECT name, age FROM data WHERE city = 'NYC'",
-        })
+        result = await handle_data_query(
+            {
+                "path": sample_csv,
+                "query": "SELECT name, age FROM data WHERE city = 'NYC'",
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 2
         names = [r["name"] for r in result["rows"]]
@@ -220,27 +224,33 @@ class TestDataQuery:
 
     @pytest.mark.asyncio
     async def test_select_with_order(self, sample_csv):
-        result = await handle_data_query({
-            "path": sample_csv,
-            "query": "SELECT name FROM data ORDER BY age DESC",
-        })
+        result = await handle_data_query(
+            {
+                "path": sample_csv,
+                "query": "SELECT name FROM data ORDER BY age DESC",
+            }
+        )
         assert "error" not in result
         assert result["rows"][0]["name"] == "Charlie"
 
     @pytest.mark.asyncio
     async def test_invalid_sql(self, sample_csv):
-        result = await handle_data_query({
-            "path": sample_csv,
-            "query": "SELECTT * FROMM nowhere",
-        })
+        result = await handle_data_query(
+            {
+                "path": sample_csv,
+                "query": "SELECTT * FROMM nowhere",
+            }
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_query_nonexistent_file(self):
-        result = await handle_data_query({
-            "path": "/tmp/no_such_data_file.csv",
-            "query": "SELECT * FROM data",
-        })
+        result = await handle_data_query(
+            {
+                "path": "/tmp/no_such_data_file.csv",
+                "query": "SELECT * FROM data",
+            }
+        )
         assert "error" in result
 
 
@@ -281,12 +291,14 @@ class TestDataSummarize:
 class TestDataTransform:
     @pytest.mark.asyncio
     async def test_filter_equals(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "filter", "column": "city", "operator": "==", "value": "NYC"},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "filter", "column": "city", "operator": "==", "value": "NYC"},
+                ],
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 2
         for row in result["rows"]:
@@ -294,47 +306,55 @@ class TestDataTransform:
 
     @pytest.mark.asyncio
     async def test_filter_greater_than(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "filter", "column": "age", "operator": ">", "value": 28},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "filter", "column": "age", "operator": ">", "value": 28},
+                ],
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 2  # Alice (30) and Charlie (35)
 
     @pytest.mark.asyncio
     async def test_sort_ascending(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "sort", "column": "age"},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "sort", "column": "age"},
+                ],
+            }
+        )
         assert "error" not in result
         ages = [r["age"] for r in result["rows"]]
         assert ages == sorted(ages)
 
     @pytest.mark.asyncio
     async def test_sort_descending(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "sort", "column": "age", "descending": True},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "sort", "column": "age", "descending": True},
+                ],
+            }
+        )
         assert "error" not in result
         ages = [r["age"] for r in result["rows"]]
         assert ages == sorted(ages, reverse=True)
 
     @pytest.mark.asyncio
     async def test_group_by_with_agg(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "group_by", "columns": ["city"], "agg": {"age": "mean"}},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "group_by", "columns": ["city"], "agg": {"age": "mean"}},
+                ],
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 2  # NYC and LA
         assert "city" in result["columns"]
@@ -342,12 +362,14 @@ class TestDataTransform:
 
     @pytest.mark.asyncio
     async def test_group_by_count(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "group_by", "columns": ["city"], "agg": {"name": "count"}},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "group_by", "columns": ["city"], "agg": {"name": "count"}},
+                ],
+            }
+        )
         assert "error" not in result
         # NYC has 2 people, LA has 1
         rows_by_city = {r["city"]: r for r in result["rows"]}
@@ -357,64 +379,76 @@ class TestDataTransform:
     @pytest.mark.asyncio
     async def test_chained_operations(self, sample_csv):
         """Filter then sort — operations applied sequentially."""
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "filter", "column": "city", "operator": "==", "value": "NYC"},
-                {"op": "sort", "column": "age", "descending": True},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "filter", "column": "city", "operator": "==", "value": "NYC"},
+                    {"op": "sort", "column": "age", "descending": True},
+                ],
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 2
         assert result["rows"][0]["name"] == "Charlie"  # 35 > 30
 
     @pytest.mark.asyncio
     async def test_unknown_operation(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [{"op": "pivot"}],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [{"op": "pivot"}],
+            }
+        )
         assert "error" in result
         assert "Unknown operation" in result["error"]
 
     @pytest.mark.asyncio
     async def test_unsupported_filter_operator(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "filter", "column": "age", "operator": "LIKE", "value": 30},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "filter", "column": "age", "operator": "LIKE", "value": 30},
+                ],
+            }
+        )
         assert "error" in result
         assert "Unsupported filter operator" in result["error"]
 
     @pytest.mark.asyncio
     async def test_unsupported_agg_function(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "group_by", "columns": ["city"], "agg": {"age": "median"}},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "group_by", "columns": ["city"], "agg": {"age": "median"}},
+                ],
+            }
+        )
         assert "error" in result
         assert "Unsupported aggregation" in result["error"]
 
     @pytest.mark.asyncio
     async def test_group_by_without_agg(self, sample_csv):
-        result = await handle_data_transform({
-            "path": sample_csv,
-            "operations": [
-                {"op": "group_by", "columns": ["city"]},
-            ],
-        })
+        result = await handle_data_transform(
+            {
+                "path": sample_csv,
+                "operations": [
+                    {"op": "group_by", "columns": ["city"]},
+                ],
+            }
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_transform_nonexistent_file(self):
-        result = await handle_data_transform({
-            "path": "/tmp/no_such_file.csv",
-            "operations": [{"op": "sort", "column": "x"}],
-        })
+        result = await handle_data_transform(
+            {
+                "path": "/tmp/no_such_file.csv",
+                "operations": [{"op": "sort", "column": "x"}],
+            }
+        )
         assert "error" in result
 
 
@@ -426,25 +460,30 @@ class TestDataExport:
     @pytest.mark.asyncio
     async def test_csv_to_json(self, sample_csv, tmp_path):
         output = str(tmp_path / "output.json")
-        result = await handle_data_export({
-            "input_path": sample_csv,
-            "output_path": output,
-        })
+        result = await handle_data_export(
+            {
+                "input_path": sample_csv,
+                "output_path": output,
+            }
+        )
         assert "error" not in result
         assert result["path"] == output
         assert result["row_count"] == 3
         # Verify output is valid JSON
         import json
+
         data = json.loads(open(output).read())
         assert len(data) == 3
 
     @pytest.mark.asyncio
     async def test_csv_to_parquet(self, sample_csv, tmp_path):
         output = str(tmp_path / "output.parquet")
-        result = await handle_data_export({
-            "input_path": sample_csv,
-            "output_path": output,
-        })
+        result = await handle_data_export(
+            {
+                "input_path": sample_csv,
+                "output_path": output,
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 3
         # Verify we can read the parquet back
@@ -454,40 +493,48 @@ class TestDataExport:
     @pytest.mark.asyncio
     async def test_parquet_to_csv(self, sample_parquet, tmp_path):
         output = str(tmp_path / "output.csv")
-        result = await handle_data_export({
-            "input_path": sample_parquet,
-            "output_path": output,
-        })
+        result = await handle_data_export(
+            {
+                "input_path": sample_parquet,
+                "output_path": output,
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 3
 
     @pytest.mark.asyncio
     async def test_export_with_explicit_format(self, sample_csv, tmp_path):
         output = str(tmp_path / "output.dat")
-        result = await handle_data_export({
-            "input_path": sample_csv,
-            "output_path": output,
-            "format": "csv",
-        })
+        result = await handle_data_export(
+            {
+                "input_path": sample_csv,
+                "output_path": output,
+                "format": "csv",
+            }
+        )
         assert "error" not in result
         assert result["row_count"] == 3
 
     @pytest.mark.asyncio
     async def test_export_nonexistent_input(self, tmp_path):
         output = str(tmp_path / "output.csv")
-        result = await handle_data_export({
-            "input_path": "/tmp/no_such_file.csv",
-            "output_path": output,
-        })
+        result = await handle_data_export(
+            {
+                "input_path": "/tmp/no_such_file.csv",
+                "output_path": output,
+            }
+        )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_export_unknown_output_format(self, sample_csv, tmp_path):
         output = str(tmp_path / "output.xyz")
-        result = await handle_data_export({
-            "input_path": sample_csv,
-            "output_path": output,
-        })
+        result = await handle_data_export(
+            {
+                "input_path": sample_csv,
+                "output_path": output,
+            }
+        )
         assert "error" in result
         assert "Cannot detect format" in result["error"]
 
@@ -539,9 +586,11 @@ class TestMissingDependency:
         import max.tools.native.data_tools as mod
 
         monkeypatch.setattr(mod, "HAS_POLARS", False)
-        result = await handle_data_export({
-            "input_path": "data.csv",
-            "output_path": "out.json",
-        })
+        result = await handle_data_export(
+            {
+                "input_path": "data.csv",
+                "output_path": "out.json",
+            }
+        )
         assert "error" in result
         assert "polars" in result["error"].lower()

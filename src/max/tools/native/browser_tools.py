@@ -33,7 +33,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="browser.navigate",
         category="browser",
-        description="Navigate to a URL in a headless browser. Creates a new page or reuses an existing one.",
+        description="Navigate to a URL in a headless browser. Reuses or creates a page.",
         permissions=["network.http", "browser.control"],
         provider_id="native",
         input_schema={
@@ -214,7 +214,11 @@ async def close_browser() -> None:
 
 
 def _no_playwright_error() -> dict[str, Any]:
-    return {"error": "playwright not installed. Run: pip install playwright && playwright install chromium"}
+    return {
+        "error": (
+            "playwright not installed. Run: pip install playwright && playwright install chromium"
+        )
+    }
 
 
 # ── Handlers ──────────────────────────────────────────────────────────

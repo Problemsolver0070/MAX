@@ -5,7 +5,7 @@ All tests mock caldav and icalendar — no real CalDAV server needed.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,7 +17,6 @@ from max.tools.native.calendar_tools import (
     handle_calendar_list_events,
     handle_calendar_update_event,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -148,7 +147,9 @@ class TestToolDefinitions:
         write_ids = {"calendar.create_event", "calendar.update_event", "calendar.delete_event"}
         for tool in TOOL_DEFINITIONS:
             if tool.tool_id in write_ids:
-                assert "calendar.write" in tool.permissions, f"{tool.tool_id} missing calendar.write"
+                assert "calendar.write" in tool.permissions, (
+                    f"{tool.tool_id} missing calendar.write"
+                )
 
 
 # ── Missing Dependency Tests ──────────────────────────────────────────
@@ -158,7 +159,9 @@ class TestMissingCaldav:
     @pytest.mark.asyncio
     async def test_list_events_no_caldav(self):
         with patch("max.tools.native.calendar_tools.HAS_CALDAV", False):
-            result = await handle_calendar_list_events({**BASE_INPUTS, "start": "2025-01-01", "end": "2025-01-31"})
+            result = await handle_calendar_list_events(
+                {**BASE_INPUTS, "start": "2025-01-01", "end": "2025-01-31"}
+            )
         assert "error" in result
         assert "caldav" in result["error"]
 
@@ -166,7 +169,12 @@ class TestMissingCaldav:
     async def test_create_event_no_caldav(self):
         with patch("max.tools.native.calendar_tools.HAS_CALDAV", False):
             result = await handle_calendar_create_event(
-                {**BASE_INPUTS, "summary": "Test", "start": "2025-01-15T09:00:00", "end": "2025-01-15T10:00:00"}
+                {
+                    **BASE_INPUTS,
+                    "summary": "Test",
+                    "start": "2025-01-15T09:00:00",
+                    "end": "2025-01-15T10:00:00",
+                }
             )
         assert "error" in result
         assert "caldav" in result["error"]
@@ -190,7 +198,9 @@ class TestMissingIcalendar:
     @pytest.mark.asyncio
     async def test_list_events_no_icalendar(self):
         with patch("max.tools.native.calendar_tools.HAS_ICALENDAR", False):
-            result = await handle_calendar_list_events({**BASE_INPUTS, "start": "2025-01-01", "end": "2025-01-31"})
+            result = await handle_calendar_list_events(
+                {**BASE_INPUTS, "start": "2025-01-01", "end": "2025-01-31"}
+            )
         assert "error" in result
         assert "icalendar" in result["error"]
 
@@ -198,7 +208,12 @@ class TestMissingIcalendar:
     async def test_create_event_no_icalendar(self):
         with patch("max.tools.native.calendar_tools.HAS_ICALENDAR", False):
             result = await handle_calendar_create_event(
-                {**BASE_INPUTS, "summary": "Test", "start": "2025-01-15T09:00:00", "end": "2025-01-15T10:00:00"}
+                {
+                    **BASE_INPUTS,
+                    "summary": "Test",
+                    "start": "2025-01-15T09:00:00",
+                    "end": "2025-01-15T10:00:00",
+                }
             )
         assert "error" in result
         assert "icalendar" in result["error"]
@@ -446,9 +461,7 @@ class TestDeleteEvent:
 
         with patch("max.tools.native.calendar_tools.caldav") as mock_caldav_mod:
             mock_caldav_mod.DAVClient = mock_client_cls
-            result = await handle_calendar_delete_event(
-                {**BASE_INPUTS, "uid": "test-uid-123"}
-            )
+            result = await handle_calendar_delete_event({**BASE_INPUTS, "uid": "test-uid-123"})
 
         assert result["uid"] == "test-uid-123"
         assert result["deleted"] is True
@@ -462,9 +475,7 @@ class TestDeleteEvent:
 
         with patch("max.tools.native.calendar_tools.caldav") as mock_caldav_mod:
             mock_caldav_mod.DAVClient = mock_client_cls
-            await handle_calendar_delete_event(
-                {**BASE_INPUTS, "uid": "test-uid-123"}
-            )
+            await handle_calendar_delete_event({**BASE_INPUTS, "uid": "test-uid-123"})
 
         mock_cal.event_by_uid.assert_called_once_with("test-uid-123")
         mock_event.delete.assert_called_once()
@@ -533,30 +544,44 @@ class TestSettingsFallback:
     @pytest.mark.asyncio
     async def test_no_url_returns_error(self):
         """When no URL is provided and Settings doesn't have one, return error."""
-        with patch("max.tools.native.calendar_tools._get_connection_params", return_value=("", "user", "pass")):
-            result = await handle_calendar_list_events(
-                {"start": "2025-01-01", "end": "2025-01-31"}
-            )
+        with patch(
+            "max.tools.native.calendar_tools._get_connection_params",
+            return_value=("", "user", "pass"),
+        ):
+            result = await handle_calendar_list_events({"start": "2025-01-01", "end": "2025-01-31"})
         assert "error" in result
         assert "CalDAV URL" in result["error"]
 
     @pytest.mark.asyncio
     async def test_no_url_create_returns_error(self):
-        with patch("max.tools.native.calendar_tools._get_connection_params", return_value=("", "user", "pass")):
+        with patch(
+            "max.tools.native.calendar_tools._get_connection_params",
+            return_value=("", "user", "pass"),
+        ):
             result = await handle_calendar_create_event(
-                {"summary": "Test", "start": "2025-01-15T09:00:00", "end": "2025-01-15T10:00:00"}
+                {
+                    "summary": "Test",
+                    "start": "2025-01-15T09:00:00",
+                    "end": "2025-01-15T10:00:00",
+                }
             )
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_no_url_update_returns_error(self):
-        with patch("max.tools.native.calendar_tools._get_connection_params", return_value=("", "user", "pass")):
+        with patch(
+            "max.tools.native.calendar_tools._get_connection_params",
+            return_value=("", "user", "pass"),
+        ):
             result = await handle_calendar_update_event({"uid": "test-uid"})
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_no_url_delete_returns_error(self):
-        with patch("max.tools.native.calendar_tools._get_connection_params", return_value=("", "user", "pass")):
+        with patch(
+            "max.tools.native.calendar_tools._get_connection_params",
+            return_value=("", "user", "pass"),
+        ):
             result = await handle_calendar_delete_event({"uid": "test-uid"})
         assert "error" in result
 

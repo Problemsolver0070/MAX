@@ -15,7 +15,6 @@ from max.tools.native.git_ext_tools import (
     handle_git_push,
 )
 
-
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 
@@ -82,9 +81,7 @@ class TestGitClone:
 
         # Now clone via the handler
         target = tmp_path / "cloned"
-        result = await handle_git_clone(
-            {"url": str(bare), "target_dir": str(target)}
-        )
+        result = await handle_git_clone({"url": str(bare), "target_dir": str(target)})
         assert result["exit_code"] == 0
         assert result["target_dir"] == str(target)
         assert (target / "README.md").exists()
@@ -108,9 +105,7 @@ class TestGitClone:
         await _git(["push", "origin", "master"], str(working))
 
         target = tmp_path / "shallow"
-        result = await handle_git_clone(
-            {"url": str(bare), "target_dir": str(target), "depth": 1}
-        )
+        result = await handle_git_clone({"url": str(bare), "target_dir": str(target), "depth": 1})
         assert result["exit_code"] == 0
         assert (target / "README.md").exists()
 
@@ -118,9 +113,7 @@ class TestGitClone:
     async def test_clone_invalid_url(self, tmp_path):
         """Clone from a non-existent URL returns non-zero exit code."""
         target = tmp_path / "bad_clone"
-        result = await handle_git_clone(
-            {"url": "/nonexistent/repo.git", "target_dir": str(target)}
-        )
+        result = await handle_git_clone({"url": "/nonexistent/repo.git", "target_dir": str(target)})
         assert result["exit_code"] != 0
 
 
@@ -138,9 +131,7 @@ class TestGitBranch:
     @pytest.mark.asyncio
     async def test_create_branch(self, tmp_path):
         repo = await _init_repo(tmp_path / "repo")
-        result = await handle_git_branch(
-            {"cwd": repo, "action": "create", "name": "feature-x"}
-        )
+        result = await handle_git_branch({"cwd": repo, "action": "create", "name": "feature-x"})
         assert result["exit_code"] == 0
 
         # Verify branch exists
@@ -151,17 +142,13 @@ class TestGitBranch:
     async def test_switch_branch(self, tmp_path):
         repo = await _init_repo(tmp_path / "repo")
         # Create a branch first
-        await handle_git_branch(
-            {"cwd": repo, "action": "create", "name": "other"}
-        )
+        await handle_git_branch({"cwd": repo, "action": "create", "name": "other"})
         # Switch back to master/main
         # Determine default branch name
         list_result = await handle_git_branch({"cwd": repo, "action": "list"})
         default = "master" if "master" in list_result["stdout"] else "main"
 
-        result = await handle_git_branch(
-            {"cwd": repo, "action": "switch", "name": default}
-        )
+        result = await handle_git_branch({"cwd": repo, "action": "switch", "name": default})
         assert result["exit_code"] == 0
 
     @pytest.mark.asyncio
@@ -303,10 +290,15 @@ class TestGitPrCreate:
             assert result["exit_code"] == 0
             mock_cmd.assert_called_once_with(
                 [
-                    "gh", "pr", "create",
-                    "--title", "Feature PR",
-                    "--body", "Adds feature",
-                    "--base", "main",
+                    "gh",
+                    "pr",
+                    "create",
+                    "--title",
+                    "Feature PR",
+                    "--body",
+                    "Adds feature",
+                    "--base",
+                    "main",
                 ],
                 str(tmp_path),
             )
@@ -324,9 +316,7 @@ class TestGitPrCreate:
             new_callable=AsyncMock,
             return_value=mock_result,
         ) as mock_cmd:
-            result = await handle_git_pr_create(
-                {"cwd": str(tmp_path), "title": "Quick fix"}
-            )
+            result = await handle_git_pr_create({"cwd": str(tmp_path), "title": "Quick fix"})
             assert result["exit_code"] == 0
             mock_cmd.assert_called_once_with(
                 ["gh", "pr", "create", "--title", "Quick fix", "--body", ""],
@@ -346,9 +336,7 @@ class TestGitPrCreate:
             new_callable=AsyncMock,
             return_value=mock_result,
         ):
-            result = await handle_git_pr_create(
-                {"cwd": str(tmp_path), "title": "Won't work"}
-            )
+            result = await handle_git_pr_create({"cwd": str(tmp_path), "title": "Won't work"})
             assert result["exit_code"] == 1
             assert "not authenticated" in result["stderr"]
 

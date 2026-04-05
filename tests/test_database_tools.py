@@ -17,7 +17,6 @@ from max.tools.native.database_tools import (
     handle_database_sqlite_query,
 )
 
-
 # ── Tool Definitions ──────────────────────────────────────────────────────
 
 
@@ -135,9 +134,7 @@ class TestPostgresQuery:
             {"id": 1, "name": "Alice"},
             {"id": 2, "name": "Bob"},
         ]
-        mock_asyncpg.connect.assert_awaited_once_with(
-            "postgresql://user:pass@localhost/db"
-        )
+        mock_asyncpg.connect.assert_awaited_once_with("postgresql://user:pass@localhost/db")
         mock_conn.fetch.assert_awaited_once_with("SELECT id, name FROM users")
         mock_conn.close.assert_awaited_once()
 
@@ -158,9 +155,7 @@ class TestPostgresQuery:
             )
 
         assert result["row_count"] == 1
-        mock_conn.fetch.assert_awaited_once_with(
-            "SELECT * FROM users WHERE id = $1", 1
-        )
+        mock_conn.fetch.assert_awaited_once_with("SELECT * FROM users WHERE id = $1", 1)
 
     @pytest.mark.asyncio
     async def test_empty_result(self):
@@ -401,7 +396,11 @@ class TestSqliteExecute:
             }
         )
         # CREATE TABLE doesn't affect rows
-        assert create_result["rows_affected"] == -1 or create_result["rows_affected"] == 0 or "rows_affected" in create_result
+        assert (
+            create_result["rows_affected"] == -1
+            or create_result["rows_affected"] == 0
+            or "rows_affected" in create_result
+        )
 
         insert_result = await handle_database_sqlite_execute(
             {
@@ -542,9 +541,7 @@ class TestRedisGet:
 
         with patch("max.tools.native.database_tools.aioredis") as mock_redis:
             mock_redis.from_url = MagicMock(return_value=mock_client)
-            result = await handle_database_redis_get(
-                {"url": "redis://localhost:6379/0"}
-            )
+            result = await handle_database_redis_get({"url": "redis://localhost:6379/0"})
 
         assert "error" in result
 
@@ -557,9 +554,7 @@ class TestRedisGet:
         with patch("max.tools.native.database_tools.aioredis") as mock_redis:
             mock_redis.from_url = MagicMock(return_value=mock_client)
             with pytest.raises(RuntimeError, match="connection lost"):
-                await handle_database_redis_get(
-                    {"url": "redis://localhost:6379/0", "key": "fail"}
-                )
+                await handle_database_redis_get({"url": "redis://localhost:6379/0", "key": "fail"})
 
         mock_client.aclose.assert_awaited_once()
 

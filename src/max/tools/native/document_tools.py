@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import io
 import json
 from pathlib import Path
 from typing import Any
@@ -172,9 +171,7 @@ def _parse_page_range(pages_str: str, total_pages: int) -> list[int]:
 async def handle_document_read_pdf(inputs: dict[str, Any]) -> dict[str, Any]:
     """Extract text from a PDF file."""
     if not HAS_PYPDF2:
-        raise RuntimeError(
-            "PyPDF2 is not installed. Install with: pip install 'max[documents]'"
-        )
+        raise RuntimeError("PyPDF2 is not installed. Install with: pip install 'max[documents]'")
 
     path = Path(inputs["path"])
     if not path.exists():
@@ -228,9 +225,7 @@ def _read_csv(path: Path) -> dict[str, Any]:
 def _read_excel(path: Path, sheet_name: str | None = None) -> dict[str, Any]:
     """Read an Excel file and return rows as dicts."""
     if not HAS_OPENPYXL:
-        raise RuntimeError(
-            "openpyxl is not installed. Install with: pip install 'max[documents]'"
-        )
+        raise RuntimeError("openpyxl is not installed. Install with: pip install 'max[documents]'")
 
     wb = load_workbook(str(path), read_only=True, data_only=True)
     if sheet_name:
@@ -279,9 +274,7 @@ async def handle_document_write_csv(inputs: dict[str, Any]) -> dict[str, Any]:
 async def handle_document_write_spreadsheet(inputs: dict[str, Any]) -> dict[str, Any]:
     """Write data rows to an Excel file."""
     if not HAS_OPENPYXL:
-        raise RuntimeError(
-            "openpyxl is not installed. Install with: pip install 'max[documents]'"
-        )
+        raise RuntimeError("openpyxl is not installed. Install with: pip install 'max[documents]'")
 
     path = Path(inputs["path"])
     path.parent.mkdir(parents=True, exist_ok=True)

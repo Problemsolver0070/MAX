@@ -161,8 +161,7 @@ def _check_docker() -> None:
     """Raise RuntimeError if docker library is not available."""
     if not HAS_DOCKER:
         raise RuntimeError(
-            "Docker Python library is not installed. "
-            "Install it with: pip install docker"
+            "Docker Python library is not installed. Install it with: pip install docker"
         )
 
 
@@ -223,9 +222,7 @@ async def handle_docker_run(inputs: dict[str, Any]) -> dict[str, Any]:
         if environment is not None:
             kwargs["environment"] = environment
 
-        container = await loop.run_in_executor(
-            None, lambda: client.containers.run(**kwargs)
-        )
+        container = await loop.run_in_executor(None, lambda: client.containers.run(**kwargs))
         return {
             "container_id": container.short_id,
             "name": container.name,
@@ -242,9 +239,7 @@ async def handle_docker_stop(inputs: dict[str, Any]) -> dict[str, Any]:
     loop = asyncio.get_event_loop()
     client = await loop.run_in_executor(None, _get_client)
     try:
-        container = await loop.run_in_executor(
-            None, lambda: client.containers.get(container_id)
-        )
+        container = await loop.run_in_executor(None, lambda: client.containers.get(container_id))
         await loop.run_in_executor(None, container.stop)
         return {"stopped": True}
     finally:
@@ -260,12 +255,8 @@ async def handle_docker_logs(inputs: dict[str, Any]) -> dict[str, Any]:
     loop = asyncio.get_event_loop()
     client = await loop.run_in_executor(None, _get_client)
     try:
-        container = await loop.run_in_executor(
-            None, lambda: client.containers.get(container_id)
-        )
-        raw_logs = await loop.run_in_executor(
-            None, lambda: container.logs(tail=tail)
-        )
+        container = await loop.run_in_executor(None, lambda: client.containers.get(container_id))
+        raw_logs = await loop.run_in_executor(None, lambda: container.logs(tail=tail))
         # raw_logs is bytes; decode and cap at 50KB
         logs_str = raw_logs.decode(errors="replace")[:50000]
         return {"logs": logs_str}

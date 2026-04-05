@@ -5,6 +5,31 @@ Call ``register_all_native_tools(provider)`` to register every built-in tool.
 
 from __future__ import annotations
 
+from max.tools.native.aws_tools import (
+    TOOL_DEFINITIONS as AWS_TOOLS,
+)
+from max.tools.native.aws_tools import (
+    handle_aws_cloudwatch_query,
+    handle_aws_ec2_list,
+    handle_aws_ec2_manage,
+    handle_aws_lambda_invoke,
+    handle_aws_s3_delete,
+    handle_aws_s3_get,
+    handle_aws_s3_list,
+    handle_aws_s3_put,
+)
+from max.tools.native.browser_tools import (
+    TOOL_DEFINITIONS as BROWSER_TOOLS,
+)
+from max.tools.native.browser_tools import (
+    handle_browser_click,
+    handle_browser_evaluate,
+    handle_browser_fill_form,
+    handle_browser_get_content,
+    handle_browser_navigate,
+    handle_browser_screenshot,
+    handle_browser_type,
+)
 from max.tools.native.calendar_tools import (
     TOOL_DEFINITIONS as CALENDAR_TOOLS,
 )
@@ -56,15 +81,6 @@ from max.tools.native.docker_tools import (
     handle_docker_run,
     handle_docker_stop,
 )
-from max.tools.native.email_tools import (
-    TOOL_DEFINITIONS as EMAIL_TOOLS,
-)
-from max.tools.native.email_tools import (
-    handle_email_list_folders,
-    handle_email_read,
-    handle_email_search,
-    handle_email_send,
-)
 from max.tools.native.document_tools import (
     TOOL_DEFINITIONS as DOCUMENT_TOOLS,
 )
@@ -74,6 +90,15 @@ from max.tools.native.document_tools import (
     handle_document_read_spreadsheet,
     handle_document_write_csv,
     handle_document_write_spreadsheet,
+)
+from max.tools.native.email_tools import (
+    TOOL_DEFINITIONS as EMAIL_TOOLS,
+)
+from max.tools.native.email_tools import (
+    handle_email_list_folders,
+    handle_email_read,
+    handle_email_search,
+    handle_email_send,
 )
 from max.tools.native.file_tools import (
     TOOL_DEFINITIONS as FILE_TOOLS,
@@ -85,6 +110,15 @@ from max.tools.native.file_tools import (
     handle_file_glob,
     handle_file_read,
     handle_file_write,
+)
+from max.tools.native.git_ext_tools import (
+    TOOL_DEFINITIONS as GIT_EXT_TOOLS,
+)
+from max.tools.native.git_ext_tools import (
+    handle_git_branch,
+    handle_git_clone,
+    handle_git_pr_create,
+    handle_git_push,
 )
 from max.tools.native.git_tools import (
     TOOL_DEFINITIONS as GIT_TOOLS,
@@ -125,6 +159,14 @@ from max.tools.native.search_tools import (
 from max.tools.native.search_tools import (
     handle_grep_search,
 )
+from max.tools.native.server_tools import (
+    TOOL_DEFINITIONS as SERVER_TOOLS,
+)
+from max.tools.native.server_tools import (
+    handle_server_service_status,
+    handle_server_ssh_execute,
+    handle_server_system_info,
+)
 from max.tools.native.shell_tools import (
     TOOL_DEFINITIONS as SHELL_TOOLS,
 )
@@ -137,31 +179,6 @@ from max.tools.native.web_tools import (
 from max.tools.native.web_tools import (
     handle_http_fetch,
     handle_http_request,
-)
-from max.tools.native.aws_tools import (
-    TOOL_DEFINITIONS as AWS_TOOLS,
-)
-from max.tools.native.aws_tools import (
-    handle_aws_cloudwatch_query,
-    handle_aws_ec2_list,
-    handle_aws_ec2_manage,
-    handle_aws_lambda_invoke,
-    handle_aws_s3_delete,
-    handle_aws_s3_get,
-    handle_aws_s3_list,
-    handle_aws_s3_put,
-)
-from max.tools.native.browser_tools import (
-    TOOL_DEFINITIONS as BROWSER_TOOLS,
-)
-from max.tools.native.browser_tools import (
-    handle_browser_click,
-    handle_browser_evaluate,
-    handle_browser_fill_form,
-    handle_browser_get_content,
-    handle_browser_navigate,
-    handle_browser_screenshot,
-    handle_browser_type,
 )
 from max.tools.providers.native import NativeToolProvider
 
@@ -239,6 +256,13 @@ _HANDLER_MAP = {
     "aws.ec2_manage": handle_aws_ec2_manage,
     "aws.lambda_invoke": handle_aws_lambda_invoke,
     "aws.cloudwatch_query": handle_aws_cloudwatch_query,
+    "git.clone": handle_git_clone,
+    "git.branch": handle_git_branch,
+    "git.push": handle_git_push,
+    "git.pr_create": handle_git_pr_create,
+    "server.system_info": handle_server_system_info,
+    "server.ssh_execute": handle_server_ssh_execute,
+    "server.service_status": handle_server_service_status,
 }
 
 ALL_TOOL_DEFINITIONS = (
@@ -252,13 +276,15 @@ ALL_TOOL_DEFINITIONS = (
     + DOCUMENT_TOOLS
     + EMAIL_TOOLS
     + FILE_TOOLS
-    + SHELL_TOOLS
     + GIT_TOOLS
+    + GIT_EXT_TOOLS
     + MEDIA_TOOLS
-    + WEB_TOOLS
-    + SCRAPING_TOOLS
     + PROCESS_TOOLS
+    + SCRAPING_TOOLS
     + SEARCH_TOOLS
+    + SERVER_TOOLS
+    + SHELL_TOOLS
+    + WEB_TOOLS
 )
 
 

@@ -62,7 +62,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="media.image_convert",
         category="media",
-        description="Convert an image to a different format. Auto-detects format from output_path extension.",
+        description="Convert an image to a different format (auto-detects from extension).",
         permissions=["fs.read", "fs.write"],
         provider_id="native",
         input_schema={
@@ -75,7 +75,7 @@ TOOL_DEFINITIONS = [
                 },
                 "format": {
                     "type": "string",
-                    "description": "Explicit format override (e.g. JPEG, PNG, WEBP). Auto-detected from extension if omitted.",
+                    "description": "Format override (JPEG, PNG, WEBP). Auto-detected if omitted.",
                 },
             },
             "required": ["path", "output_path"],
@@ -98,7 +98,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="media.audio_transcribe",
         category="media",
-        description="Transcribe audio to text using OpenAI Whisper. CPU-bound — runs in thread executor.",
+        description="Transcribe audio to text using OpenAI Whisper (CPU-bound).",
         permissions=["fs.read"],
         provider_id="native",
         cost_tier="high",
