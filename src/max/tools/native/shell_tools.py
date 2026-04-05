@@ -7,6 +7,8 @@ from typing import Any
 
 from max.tools.registry import ToolDefinition
 
+MAX_OUTPUT = 50_000  # 50KB cap matching web tools
+
 TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="shell.execute",
@@ -41,9 +43,11 @@ async def handle_shell_execute(inputs: dict[str, Any]) -> dict[str, Any]:
             cwd=cwd,
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        stdout_text = stdout.decode(errors="replace")[:MAX_OUTPUT]
+        stderr_text = stderr.decode(errors="replace")[:MAX_OUTPUT]
         return {
-            "stdout": stdout.decode(errors="replace"),
-            "stderr": stderr.decode(errors="replace"),
+            "stdout": stdout_text,
+            "stderr": stderr_text,
             "exit_code": proc.returncode or 0,
             "error": None,
         }

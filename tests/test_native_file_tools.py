@@ -111,6 +111,14 @@ class TestFileDelete:
         assert not f.exists()
 
     @pytest.mark.asyncio
+    async def test_deletes_empty_directory(self, tmp_path):
+        d = tmp_path / "empty_dir"
+        d.mkdir()
+        result = await handle_file_delete({"path": str(d)})
+        assert result["deleted"] is True
+        assert not d.exists()
+
+    @pytest.mark.asyncio
     async def test_delete_nonexistent(self, tmp_path):
         with pytest.raises(FileNotFoundError):
             await handle_file_delete({"path": str(tmp_path / "nope.txt")})

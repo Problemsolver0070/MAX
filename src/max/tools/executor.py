@@ -70,7 +70,17 @@ class ToolExecutor:
             await self._audit(agent_name, result, inputs)
             return result
 
-        # 4. Execute with timeout
+        # 4. Health check
+        if not await provider.health_check():
+            result = ToolResult(
+                tool_id=tool_id,
+                success=False,
+                error=f"Provider {tool_def.provider_id} is unhealthy",
+            )
+            await self._audit(agent_name, result, inputs)
+            return result
+
+        # 5. Execute with timeout
         timeout = tool_def.timeout_seconds or self._default_timeout
         try:
             result = await asyncio.wait_for(
@@ -95,7 +105,7 @@ class ToolExecutor:
                 duration_ms=duration_ms,
             )
 
-        # 5. Audit log
+        # 6. Audit log
         await self._audit(agent_name, result, inputs)
         return result
 
