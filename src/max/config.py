@@ -116,6 +116,13 @@ class Settings(BaseSettings):
     evolution_canary_timeout_seconds: int = 300
     evolution_snapshot_retention_days: int = 30
 
+    # ── Sentinel Anti-Degradation ───────────────────────────────────────
+    sentinel_model: str = "claude-opus-4-6"
+    sentinel_replay_count: int = 10
+    sentinel_monitor_interval_hours: int = 12
+    sentinel_timeout_seconds: int = 600
+    sentinel_judge_temperature: float = 0.0
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
