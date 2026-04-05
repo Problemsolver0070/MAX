@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import functools
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from max.tools.registry import ToolDefinition
@@ -285,7 +285,7 @@ def _build_vcal(
         event.add("location", location)
     if description:
         event.add("description", description)
-    event.add("dtstamp", datetime.now(timezone.utc))
+    event.add("dtstamp", datetime.now(UTC))
 
     cal.add_component(event)
     return cal.to_ical().decode("utf-8")

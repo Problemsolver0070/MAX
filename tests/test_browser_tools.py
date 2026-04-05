@@ -5,7 +5,7 @@ All tests mock Playwright — no real browser is needed.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -21,7 +21,6 @@ from max.tools.native.browser_tools import (
     handle_browser_screenshot,
     handle_browser_type,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -130,9 +129,7 @@ class TestMissingPlaywright:
     @pytest.mark.asyncio
     async def test_type_no_playwright(self):
         with patch.object(browser_tools, "HAS_PLAYWRIGHT", False):
-            result = await handle_browser_type(
-                {"page_id": "x", "selector": "input", "text": "hi"}
-            )
+            result = await handle_browser_type({"page_id": "x", "selector": "input", "text": "hi"})
             assert "error" in result
 
     @pytest.mark.asyncio
@@ -150,17 +147,13 @@ class TestMissingPlaywright:
     @pytest.mark.asyncio
     async def test_fill_form_no_playwright(self):
         with patch.object(browser_tools, "HAS_PLAYWRIGHT", False):
-            result = await handle_browser_fill_form(
-                {"page_id": "x", "fields": {"#a": "b"}}
-            )
+            result = await handle_browser_fill_form({"page_id": "x", "fields": {"#a": "b"}})
             assert "error" in result
 
     @pytest.mark.asyncio
     async def test_evaluate_no_playwright(self):
         with patch.object(browser_tools, "HAS_PLAYWRIGHT", False):
-            result = await handle_browser_evaluate(
-                {"page_id": "x", "expression": "1+1"}
-            )
+            result = await handle_browser_evaluate({"page_id": "x", "expression": "1+1"})
             assert "error" in result
 
 
@@ -195,16 +188,12 @@ class TestPageNotFound:
 
     @pytest.mark.asyncio
     async def test_fill_form_page_not_found(self):
-        result = await handle_browser_fill_form(
-            {"page_id": "missing", "fields": {"#a": "b"}}
-        )
+        result = await handle_browser_fill_form({"page_id": "missing", "fields": {"#a": "b"}})
         assert "error" in result
 
     @pytest.mark.asyncio
     async def test_evaluate_page_not_found(self):
-        result = await handle_browser_evaluate(
-            {"page_id": "missing", "expression": "1+1"}
-        )
+        result = await handle_browser_evaluate({"page_id": "missing", "expression": "1+1"})
         assert "error" in result
 
 
@@ -227,7 +216,10 @@ class TestBrowserNavigate:
         mock_pw_cm = AsyncMock()
         mock_pw_cm.start = AsyncMock(return_value=mock_pw_instance)
 
-        with patch("max.tools.native.browser_tools.async_playwright", return_value=mock_pw_cm):
+        with patch(
+            "max.tools.native.browser_tools.async_playwright",
+            return_value=mock_pw_cm,
+        ):
             result = await handle_browser_navigate({"url": "https://example.com"})
 
         assert "page_id" in result
@@ -381,9 +373,7 @@ class TestBrowserEvaluate:
     async def test_evaluate_success(self):
         mock_page = _setup_browser_with_page("pg1")
         mock_page.evaluate = AsyncMock(return_value=42)
-        result = await handle_browser_evaluate(
-            {"page_id": "pg1", "expression": "2 + 40"}
-        )
+        result = await handle_browser_evaluate({"page_id": "pg1", "expression": "2 + 40"})
         assert result == {"result": 42}
         mock_page.evaluate.assert_called_once_with("2 + 40")
 
@@ -391,18 +381,14 @@ class TestBrowserEvaluate:
     async def test_evaluate_string_result(self):
         mock_page = _setup_browser_with_page("pg1")
         mock_page.evaluate = AsyncMock(return_value="hello")
-        result = await handle_browser_evaluate(
-            {"page_id": "pg1", "expression": "document.title"}
-        )
+        result = await handle_browser_evaluate({"page_id": "pg1", "expression": "document.title"})
         assert result == {"result": "hello"}
 
     @pytest.mark.asyncio
     async def test_evaluate_null_result(self):
         mock_page = _setup_browser_with_page("pg1")
         mock_page.evaluate = AsyncMock(return_value=None)
-        result = await handle_browser_evaluate(
-            {"page_id": "pg1", "expression": "void 0"}
-        )
+        result = await handle_browser_evaluate({"page_id": "pg1", "expression": "void 0"})
         assert result == {"result": None}
 
 
@@ -489,7 +475,10 @@ class TestEnsureBrowser:
         mock_pw_cm = AsyncMock()
         mock_pw_cm.start = AsyncMock(return_value=mock_pw_instance)
 
-        with patch("max.tools.native.browser_tools.async_playwright", return_value=mock_pw_cm):
+        with patch(
+            "max.tools.native.browser_tools.async_playwright",
+            return_value=mock_pw_cm,
+        ):
             # First navigate creates the browser
             await handle_browser_navigate({"url": "https://a.com", "page_id": "pg1"})
             # Second navigate reuses existing browser (no new launch)

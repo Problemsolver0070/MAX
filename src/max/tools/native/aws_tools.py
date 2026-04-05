@@ -191,9 +191,7 @@ TOOL_DEFINITIONS = [
 def _check_boto3() -> None:
     """Raise RuntimeError if boto3 is not installed."""
     if not HAS_BOTO3:
-        raise RuntimeError(
-            "boto3 is required for AWS tools. Install with: pip install boto3"
-        )
+        raise RuntimeError("boto3 is required for AWS tools. Install with: pip install boto3")
 
 
 async def _run_sync(fn: Any, *args: Any, **kwargs: Any) -> Any:

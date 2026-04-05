@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime, timezone
-from typing import Any, Generator
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -108,9 +108,7 @@ class TestMissingDependency:
     async def test_missing_boto3_ec2_manage(self):
         with patch("max.tools.native.aws_tools.HAS_BOTO3", False):
             with pytest.raises(RuntimeError, match="boto3 is required"):
-                await handle_aws_ec2_manage(
-                    {"instance_ids": ["i-1"], "action": "stop"}
-                )
+                await handle_aws_ec2_manage({"instance_ids": ["i-1"], "action": "stop"})
 
     @pytest.mark.asyncio
     async def test_missing_boto3_lambda(self):
@@ -136,11 +134,11 @@ class TestS3List:
             "Buckets": [
                 {
                     "Name": "my-bucket",
-                    "CreationDate": datetime(2024, 1, 1, tzinfo=timezone.utc),
+                    "CreationDate": datetime(2024, 1, 1, tzinfo=UTC),
                 },
                 {
                     "Name": "other-bucket",
-                    "CreationDate": datetime(2024, 6, 15, tzinfo=timezone.utc),
+                    "CreationDate": datetime(2024, 6, 15, tzinfo=UTC),
                 },
             ]
         }
@@ -161,28 +159,24 @@ class TestS3List:
                 {
                     "Key": "file1.txt",
                     "Size": 1024,
-                    "LastModified": datetime(2024, 3, 1, tzinfo=timezone.utc),
+                    "LastModified": datetime(2024, 3, 1, tzinfo=UTC),
                 },
                 {
                     "Key": "file2.txt",
                     "Size": 2048,
-                    "LastModified": datetime(2024, 3, 2, tzinfo=timezone.utc),
+                    "LastModified": datetime(2024, 3, 2, tzinfo=UTC),
                 },
             ]
         }
 
         with mock_boto3_client(mock_client):
-            result = await handle_aws_s3_list(
-                {"bucket": "my-bucket", "prefix": "files/"}
-            )
+            result = await handle_aws_s3_list({"bucket": "my-bucket", "prefix": "files/"})
 
         assert "objects" in result
         assert len(result["objects"]) == 2
         assert result["objects"][0]["key"] == "file1.txt"
         assert result["objects"][0]["size"] == 1024
-        mock_client.list_objects_v2.assert_called_once_with(
-            Bucket="my-bucket", Prefix="files/"
-        )
+        mock_client.list_objects_v2.assert_called_once_with(Bucket="my-bucket", Prefix="files/")
 
     @pytest.mark.asyncio
     async def test_list_objects_empty_bucket(self):
@@ -202,9 +196,7 @@ class TestS3List:
         with mock_boto3_client(mock_client):
             await handle_aws_s3_list({"bucket": "my-bucket"})
 
-        mock_client.list_objects_v2.assert_called_once_with(
-            Bucket="my-bucket", Prefix=""
-        )
+        mock_client.list_objects_v2.assert_called_once_with(Bucket="my-bucket", Prefix="")
 
 
 # ── S3 Get ───────────────────────────────────────────────────────────
@@ -224,9 +216,7 @@ class TestS3Get:
         }
 
         with mock_boto3_client(mock_client):
-            result = await handle_aws_s3_get(
-                {"bucket": "my-bucket", "key": "hello.txt"}
-            )
+            result = await handle_aws_s3_get({"bucket": "my-bucket", "key": "hello.txt"})
 
         assert result["content"] == "Hello, World!"
         assert result["content_type"] == "text/plain"
@@ -302,9 +292,7 @@ class TestS3Put:
         mock_client.put_object.return_value = {"ETag": '"def456"'}
 
         with mock_boto3_client(mock_client):
-            result = await handle_aws_s3_put(
-                {"bucket": "b", "key": "k", "content": "data"}
-            )
+            result = await handle_aws_s3_put({"bucket": "b", "key": "k", "content": "data"})
 
         assert result["etag"] == '"def456"'
         mock_client.put_object.assert_called_once_with(
@@ -325,14 +313,10 @@ class TestS3Delete:
         mock_client.delete_object.return_value = {}
 
         with mock_boto3_client(mock_client):
-            result = await handle_aws_s3_delete(
-                {"bucket": "my-bucket", "key": "old.txt"}
-            )
+            result = await handle_aws_s3_delete({"bucket": "my-bucket", "key": "old.txt"})
 
         assert result["deleted"] is True
-        mock_client.delete_object.assert_called_once_with(
-            Bucket="my-bucket", Key="old.txt"
-        )
+        mock_client.delete_object.assert_called_once_with(Bucket="my-bucket", Key="old.txt")
 
 
 # ── EC2 List ─────────────────────────────────────────────────────────
@@ -402,9 +386,7 @@ class TestEC2List:
         mock_client.describe_instances.return_value = {"Reservations": []}
 
         with mock_boto3_client(mock_client):
-            await handle_aws_ec2_list(
-                {"filters": {"instance-state-name": ["running"]}}
-            )
+            await handle_aws_ec2_list({"filters": {"instance-state-name": ["running"]}})
 
         mock_client.describe_instances.assert_called_once_with(
             Filters=[{"Name": "instance-state-name", "Values": ["running"]}]
@@ -417,9 +399,7 @@ class TestEC2List:
         mock_client.describe_instances.return_value = {"Reservations": []}
 
         with mock_boto3_client(mock_client):
-            await handle_aws_ec2_list(
-                {"filters": {"instance-type": "t3.micro"}}
-            )
+            await handle_aws_ec2_list({"filters": {"instance-type": "t3.micro"}})
 
         mock_client.describe_instances.assert_called_once_with(
             Filters=[{"Name": "instance-type", "Values": ["t3.micro"]}]
@@ -469,9 +449,7 @@ class TestEC2Manage:
         mock_client.start_instances.return_value = {}
 
         with mock_boto3_client(mock_client):
-            result = await handle_aws_ec2_manage(
-                {"instance_ids": ["i-123"], "action": "start"}
-            )
+            result = await handle_aws_ec2_manage({"instance_ids": ["i-123"], "action": "start"})
 
         assert result["action"] == "start"
         assert result["instance_ids"] == ["i-123"]
@@ -489,9 +467,7 @@ class TestEC2Manage:
 
         assert result["action"] == "stop"
         assert result["instance_ids"] == ["i-456", "i-789"]
-        mock_client.stop_instances.assert_called_once_with(
-            InstanceIds=["i-456", "i-789"]
-        )
+        mock_client.stop_instances.assert_called_once_with(InstanceIds=["i-456", "i-789"])
 
     @pytest.mark.asyncio
     async def test_reboot_instances(self):
@@ -499,9 +475,7 @@ class TestEC2Manage:
         mock_client.reboot_instances.return_value = {}
 
         with mock_boto3_client(mock_client):
-            result = await handle_aws_ec2_manage(
-                {"instance_ids": ["i-abc"], "action": "reboot"}
-            )
+            result = await handle_aws_ec2_manage({"instance_ids": ["i-abc"], "action": "reboot"})
 
         assert result["action"] == "reboot"
         mock_client.reboot_instances.assert_called_once_with(InstanceIds=["i-abc"])
@@ -512,9 +486,7 @@ class TestEC2Manage:
 
         with mock_boto3_client(mock_client):
             with pytest.raises(ValueError, match="Invalid action"):
-                await handle_aws_ec2_manage(
-                    {"instance_ids": ["i-123"], "action": "terminate"}
-                )
+                await handle_aws_ec2_manage({"instance_ids": ["i-123"], "action": "terminate"})
 
 
 # ── Lambda Invoke ────────────────────────────────────────────────────
@@ -599,9 +571,7 @@ class TestCloudWatchQuery:
         assert len(result["events"]) == 2
         assert result["events"][0]["message"] == "Log line 1"
         assert result["events"][1]["timestamp"] == 1700000001000
-        mock_client.filter_log_events.assert_called_once_with(
-            logGroupName="/app/logs", limit=100
-        )
+        mock_client.filter_log_events.assert_called_once_with(logGroupName="/app/logs", limit=100)
 
     @pytest.mark.asyncio
     async def test_query_with_filter_pattern(self):
@@ -609,9 +579,7 @@ class TestCloudWatchQuery:
         mock_client.filter_log_events.return_value = {"events": []}
 
         with mock_boto3_client(mock_client):
-            result = await handle_aws_cloudwatch_query(
-                {"log_group": "/app/logs", "query": "ERROR"}
-            )
+            result = await handle_aws_cloudwatch_query({"log_group": "/app/logs", "query": "ERROR"})
 
         assert result["events"] == []
         mock_client.filter_log_events.assert_called_once_with(

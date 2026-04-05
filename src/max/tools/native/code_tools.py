@@ -149,9 +149,7 @@ async def handle_code_format(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_code_test(inputs: dict[str, Any]) -> dict[str, Any]:
     """Run pytest on a path."""
-    return await _run_cmd(
-        [sys.executable, "-m", "pytest", inputs["path"], "--tb=short", "-q"]
-    )
+    return await _run_cmd([sys.executable, "-m", "pytest", inputs["path"], "--tb=short", "-q"])
 
 
 async def handle_code_dependencies(inputs: dict[str, Any]) -> dict[str, Any]:

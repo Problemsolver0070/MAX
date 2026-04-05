@@ -95,8 +95,7 @@ def _check_asyncssh() -> None:
     """Raise RuntimeError if asyncssh library is not available."""
     if not HAS_ASYNCSSH:
         raise RuntimeError(
-            "asyncssh library is not installed. "
-            "Install it with: pip install asyncssh"
+            "asyncssh library is not installed. Install it with: pip install asyncssh"
         )
 
 
@@ -167,7 +166,9 @@ async def handle_server_service_status(inputs: dict[str, Any]) -> dict[str, Any]
     service_name = inputs["service_name"]
 
     proc = await asyncio.create_subprocess_exec(
-        "systemctl", "is-active", service_name,
+        "systemctl",
+        "is-active",
+        service_name,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )

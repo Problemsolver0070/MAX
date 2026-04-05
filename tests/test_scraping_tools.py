@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from max.tools.native.scraping_tools import (
-    TOOL_DEFINITIONS,
     MAX_TEXT_BYTES,
+    TOOL_DEFINITIONS,
     handle_web_extract_links,
     handle_web_scrape,
     handle_web_search,
@@ -52,7 +52,11 @@ BRAVE_API_RESPONSE = {
 # ── Helpers ──────────────────────────────────────────────────────────
 
 
-def _mock_httpx_client(response_text: str = "", status_code: int = 200, json_data: dict | None = None):
+def _mock_httpx_client(
+    response_text: str = "",
+    status_code: int = 200,
+    json_data: dict | None = None,
+):
     """Create a mock httpx.AsyncClient context manager."""
     mock_response = AsyncMock()
     mock_response.status_code = status_code
@@ -139,7 +143,9 @@ class TestWebScrape:
         mock_client, _ = _mock_httpx_client(SAMPLE_HTML)
 
         with patch("max.tools.native.scraping_tools.httpx.AsyncClient", return_value=mock_client):
-            result = await handle_web_scrape({"url": "https://example.com", "selector": "#nonexistent"})
+            result = await handle_web_scrape(
+                {"url": "https://example.com", "selector": "#nonexistent"}
+            )
 
         assert "error" in result
         assert "not found" in result["error"]
@@ -303,7 +309,7 @@ class TestWebSearch:
         mock_client, _ = _mock_httpx_client(json_data=BRAVE_API_RESPONSE)
 
         with patch("max.tools.native.scraping_tools.httpx.AsyncClient", return_value=mock_client):
-            result = await handle_web_search({"query": "python", "count": 10, "api_key": "test-key"})
+            await handle_web_search({"query": "python", "count": 10, "api_key": "test-key"})
 
         # Verify the params passed to the API
         mock_client.get.assert_called_once()

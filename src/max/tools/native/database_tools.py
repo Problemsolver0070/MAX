@@ -46,7 +46,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="database.postgres_execute",
         category="database",
-        description="Execute a DML/DDL statement on PostgreSQL (INSERT, UPDATE, DELETE, CREATE, etc.).",
+        description="Execute a DML/DDL statement on PostgreSQL (INSERT, UPDATE, etc.).",
         permissions=["database.write"],
         provider_id="native",
         input_schema={

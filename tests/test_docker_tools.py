@@ -14,7 +14,6 @@ from max.tools.native.docker_tools import (
     handle_docker_stop,
 )
 
-
 # ── Tool Definition Tests ────────────────────────────────────────────────
 
 
@@ -113,7 +112,13 @@ class TestDockerListContainers:
         c2 = _make_mock_container(short_id="abc2", name="db", status="running")
         mock_client.containers.list.return_value = [c1, c2]
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_list_containers({"all": False})
 
         assert len(result["containers"]) == 2
@@ -129,7 +134,13 @@ class TestDockerListContainers:
         c2 = _make_mock_container(short_id="abc2", name="old", status="exited")
         mock_client.containers.list.return_value = [c1, c2]
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_list_containers({"all": True})
 
         assert len(result["containers"]) == 2
@@ -141,7 +152,13 @@ class TestDockerListContainers:
         mock_client = _make_mock_client()
         mock_client.containers.list.return_value = []
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_list_containers({})
 
         assert result["containers"] == []
@@ -152,7 +169,13 @@ class TestDockerListContainers:
         c = _make_mock_container(image_tags=[], image_id="sha256:deadbeef")
         mock_client.containers.list.return_value = [c]
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_list_containers({})
 
         assert result["containers"][0]["image"] == "sha256:deadbeef"
@@ -168,14 +191,18 @@ class TestDockerRun:
         mock_container = _make_mock_container(short_id="new123", name="new-container")
         mock_client.containers.run.return_value = mock_container
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_run({"image": "ubuntu:22.04"})
 
         assert result["container_id"] == "new123"
         assert result["name"] == "new-container"
-        mock_client.containers.run.assert_called_once_with(
-            image="ubuntu:22.04", detach=True
-        )
+        mock_client.containers.run.assert_called_once_with(image="ubuntu:22.04", detach=True)
 
     @pytest.mark.asyncio
     async def test_run_with_all_options(self):
@@ -183,7 +210,13 @@ class TestDockerRun:
         mock_container = _make_mock_container(short_id="full123", name="my-app")
         mock_client.containers.run.return_value = mock_container
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_run(
                 {
                     "image": "nginx:latest",
@@ -211,15 +244,17 @@ class TestDockerRun:
         mock_container = _make_mock_container(short_id="fg123", name="foreground")
         mock_client.containers.run.return_value = mock_container
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
-            result = await handle_docker_run(
-                {"image": "alpine", "detach": False}
-            )
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
+            result = await handle_docker_run({"image": "alpine", "detach": False})
 
         assert result["container_id"] == "fg123"
-        mock_client.containers.run.assert_called_once_with(
-            image="alpine", detach=False
-        )
+        mock_client.containers.run.assert_called_once_with(image="alpine", detach=False)
 
 
 # ── docker.stop Tests ────────────────────────────────────────────────────
@@ -233,7 +268,13 @@ class TestDockerStop:
         mock_container.stop = MagicMock()
         mock_client.containers.get.return_value = mock_container
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_stop({"container_id": "abc123"})
 
         assert result["stopped"] is True
@@ -252,7 +293,13 @@ class TestDockerLogs:
         mock_container.logs.return_value = b"Starting server...\nListening on :8080\n"
         mock_client.containers.get.return_value = mock_container
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_logs({"container_id": "abc123"})
 
         assert "Starting server" in result["logs"]
@@ -266,8 +313,14 @@ class TestDockerLogs:
         mock_container.logs.return_value = b"line\n"
         mock_client.containers.get.return_value = mock_container
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
-            result = await handle_docker_logs({"container_id": "abc123", "tail": 50})
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
+            await handle_docker_logs({"container_id": "abc123", "tail": 50})
 
         mock_container.logs.assert_called_once_with(tail=50)
 
@@ -280,7 +333,13 @@ class TestDockerLogs:
         mock_container.logs.return_value = b"x" * 60000
         mock_client.containers.get.return_value = mock_container
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_logs({"container_id": "abc123"})
 
         assert len(result["logs"]) == 50000
@@ -297,7 +356,13 @@ class TestDockerBuild:
         mock_image.short_id = "sha256:abc123"
         mock_client.images.build.return_value = (mock_image, [{"stream": "Step 1/3"}])
 
-        with _patch_docker_available(), patch("max.tools.native.docker_tools._get_client", return_value=mock_client):
+        with (
+            _patch_docker_available(),
+            patch(
+                "max.tools.native.docker_tools._get_client",
+                return_value=mock_client,
+            ),
+        ):
             result = await handle_docker_build({"path": "/app", "tag": "myapp:v1"})
 
         assert result["image_id"] == "sha256:abc123"
@@ -324,8 +389,13 @@ class TestDockerCompose:
         assert result["exit_code"] == 0
         assert "Creating network" in result["stdout"]
         mock_exec.assert_called_once_with(
-            "docker", "compose", "up", "-d",
-            stdout=-1, stderr=-1, cwd="/project",
+            "docker",
+            "compose",
+            "up",
+            "-d",
+            stdout=-1,
+            stderr=-1,
+            cwd="/project",
         )
 
     @pytest.mark.asyncio
@@ -339,8 +409,12 @@ class TestDockerCompose:
 
         assert result["exit_code"] == 0
         mock_exec.assert_called_once_with(
-            "docker", "compose", "down",
-            stdout=-1, stderr=-1, cwd="/project",
+            "docker",
+            "compose",
+            "down",
+            stdout=-1,
+            stderr=-1,
+            cwd="/project",
         )
 
     @pytest.mark.asyncio
@@ -355,8 +429,12 @@ class TestDockerCompose:
         assert result["exit_code"] == 0
         assert "web" in result["stdout"]
         mock_exec.assert_called_once_with(
-            "docker", "compose", "ps",
-            stdout=-1, stderr=-1, cwd="/project",
+            "docker",
+            "compose",
+            "ps",
+            stdout=-1,
+            stderr=-1,
+            cwd="/project",
         )
 
     @pytest.mark.asyncio
@@ -372,16 +450,21 @@ class TestDockerCompose:
 
         assert result["exit_code"] == 0
         mock_exec.assert_called_once_with(
-            "docker", "compose", "-f", "docker-compose.prod.yml", "up", "-d",
-            stdout=-1, stderr=-1, cwd="/project",
+            "docker",
+            "compose",
+            "-f",
+            "docker-compose.prod.yml",
+            "up",
+            "-d",
+            stdout=-1,
+            stderr=-1,
+            cwd="/project",
         )
 
     @pytest.mark.asyncio
     async def test_compose_unknown_action(self):
         # The handler has a guard against unknown actions (even though schema has enum)
-        result = await handle_docker_compose(
-            {"action": "restart", "cwd": "/project"}
-        )
+        result = await handle_docker_compose({"action": "restart", "cwd": "/project"})
         assert result["exit_code"] == 1
         assert "Unknown action" in result["stderr"]
 

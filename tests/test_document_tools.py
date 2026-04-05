@@ -2,7 +2,6 @@
 
 import csv
 import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,7 +15,6 @@ from max.tools.native.document_tools import (
     handle_document_write_csv,
     handle_document_write_spreadsheet,
 )
-
 
 # ── Tool definitions ──────────────────────────────────────────────────
 
@@ -86,7 +84,11 @@ class TestReadPdf:
 
         with (
             patch("max.tools.native.document_tools.HAS_PYPDF2", True),
-            patch("max.tools.native.document_tools.PdfReader", create=True, return_value=mock_reader),
+            patch(
+                "max.tools.native.document_tools.PdfReader",
+                create=True,
+                return_value=mock_reader,
+            ),
             patch("max.tools.native.document_tools.Path.exists", return_value=True),
         ):
             result = await handle_document_read_pdf({"path": "/fake/test.pdf"})
@@ -106,12 +108,14 @@ class TestReadPdf:
 
         with (
             patch("max.tools.native.document_tools.HAS_PYPDF2", True),
-            patch("max.tools.native.document_tools.PdfReader", create=True, return_value=mock_reader),
+            patch(
+                "max.tools.native.document_tools.PdfReader",
+                create=True,
+                return_value=mock_reader,
+            ),
             patch("max.tools.native.document_tools.Path.exists", return_value=True),
         ):
-            result = await handle_document_read_pdf(
-                {"path": "/fake/test.pdf", "pages": "2-3"}
-            )
+            result = await handle_document_read_pdf({"path": "/fake/test.pdf", "pages": "2-3"})
             assert result["page_count"] == 5
             assert result["pages_read"] == 2
             assert "Page 2" in result["text"]
@@ -128,7 +132,11 @@ class TestReadPdf:
 
         with (
             patch("max.tools.native.document_tools.HAS_PYPDF2", True),
-            patch("max.tools.native.document_tools.PdfReader", create=True, return_value=mock_reader),
+            patch(
+                "max.tools.native.document_tools.PdfReader",
+                create=True,
+                return_value=mock_reader,
+            ),
             patch("max.tools.native.document_tools.Path.exists", return_value=True),
         ):
             result = await handle_document_read_pdf({"path": "/fake/test.pdf"})
@@ -232,9 +240,7 @@ class TestReadSpreadsheetCsv:
     @pytest.mark.asyncio
     async def test_file_not_found(self, tmp_path):
         with pytest.raises(FileNotFoundError):
-            await handle_document_read_spreadsheet(
-                {"path": str(tmp_path / "nope.csv")}
-            )
+            await handle_document_read_spreadsheet({"path": str(tmp_path / "nope.csv")})
 
     @pytest.mark.asyncio
     async def test_unsupported_format(self, tmp_path):
@@ -268,9 +274,7 @@ class TestReadSpreadsheetExcel:
 
         with (
             patch("max.tools.native.document_tools.HAS_OPENPYXL", True),
-            patch(
-                "max.tools.native.document_tools.load_workbook", return_value=mock_wb
-            ),
+            patch("max.tools.native.document_tools.load_workbook", return_value=mock_wb),
         ):
             result = await handle_document_read_spreadsheet({"path": str(xlsx)})
             assert result["columns"] == ["name", "score"]
@@ -291,13 +295,9 @@ class TestReadSpreadsheetExcel:
 
         with (
             patch("max.tools.native.document_tools.HAS_OPENPYXL", True),
-            patch(
-                "max.tools.native.document_tools.load_workbook", return_value=mock_wb
-            ),
+            patch("max.tools.native.document_tools.load_workbook", return_value=mock_wb),
         ):
-            result = await handle_document_read_spreadsheet(
-                {"path": str(xlsx), "sheet": "MySheet"}
-            )
+            result = await handle_document_read_spreadsheet({"path": str(xlsx), "sheet": "MySheet"})
             mock_wb.__getitem__.assert_called_with("MySheet")
             assert result["row_count"] == 1
 
@@ -314,9 +314,7 @@ class TestReadSpreadsheetExcel:
 
         with (
             patch("max.tools.native.document_tools.HAS_OPENPYXL", True),
-            patch(
-                "max.tools.native.document_tools.load_workbook", return_value=mock_wb
-            ),
+            patch("max.tools.native.document_tools.load_workbook", return_value=mock_wb),
         ):
             result = await handle_document_read_spreadsheet({"path": str(xlsx)})
             assert result["rows"] == []
@@ -466,9 +464,7 @@ class TestParseJson:
     @pytest.mark.asyncio
     async def test_file_not_found(self, tmp_path):
         with pytest.raises(FileNotFoundError):
-            await handle_document_parse_json(
-                {"path": str(tmp_path / "nonexistent.json")}
-            )
+            await handle_document_parse_json({"path": str(tmp_path / "nonexistent.json")})
 
     @pytest.mark.asyncio
     async def test_jsonpath_query(self, tmp_path):
@@ -492,9 +488,7 @@ class TestParseJson:
                 return_value=mock_expr,
             ),
         ):
-            result = await handle_document_parse_json(
-                {"path": str(f), "query": "$.store.books[*]"}
-            )
+            result = await handle_document_parse_json({"path": str(f), "query": "$.store.books[*]"})
             assert "results" in result
             assert len(result["results"]) == 2
             assert result["results"][0]["title"] == "A"
@@ -506,9 +500,7 @@ class TestParseJson:
 
         with patch("max.tools.native.document_tools.HAS_JSONPATH", False):
             with pytest.raises(RuntimeError, match="jsonpath-ng is not installed"):
-                await handle_document_parse_json(
-                    {"path": str(f), "query": "$.key"}
-                )
+                await handle_document_parse_json({"path": str(f), "query": "$.key"})
 
     @pytest.mark.asyncio
     async def test_no_query_returns_data(self, tmp_path):

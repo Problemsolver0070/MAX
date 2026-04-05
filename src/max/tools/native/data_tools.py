@@ -19,7 +19,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="data.load",
         category="data",
-        description="Load a data file (CSV, JSON, Parquet) and return column names, row count, and a preview of the first 10 rows.",
+        description="Load a data file (CSV/JSON/Parquet) with columns, count, and preview.",
         permissions=["fs.read"],
         provider_id="native",
         input_schema={
@@ -38,7 +38,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="data.query",
         category="data",
-        description="Run a SQL query against a data file. The file is registered as a table named 'data'.",
+        description="Run a SQL query against a data file (table name is 'data').",
         permissions=["fs.read"],
         provider_id="native",
         input_schema={
@@ -56,7 +56,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="data.summarize",
         category="data",
-        description="Generate statistical summary (count, mean, std, min, max, etc.) for all columns in a data file.",
+        description="Generate statistical summary for all columns in a data file.",
         permissions=["fs.read"],
         provider_id="native",
         input_schema={
@@ -70,7 +70,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="data.transform",
         category="data",
-        description="Apply sequential transformation operations (filter, sort, group_by) to a data file.",
+        description="Apply transformations (filter, sort, group_by) to a data file.",
         permissions=["fs.read"],
         provider_id="native",
         input_schema={
@@ -111,7 +111,8 @@ TOOL_DEFINITIONS = [
                             },
                             "agg": {
                                 "type": "object",
-                                "description": "Aggregation mapping {column: function} (for group_by). Functions: sum, mean, min, max, count, first, last.",
+                                "description": "Aggregation mapping {col: func} for group_by. "
+                                "Functions: sum, mean, min, max, count, first, last.",
                             },
                         },
                         "required": ["op"],
@@ -141,7 +142,7 @@ TOOL_DEFINITIONS = [
                 "format": {
                     "type": "string",
                     "enum": ["csv", "json", "parquet"],
-                    "description": "Output format. Auto-detected from output_path extension if not provided.",
+                    "description": "Output format. Auto-detected from extension if omitted.",
                 },
             },
             "required": ["input_path", "output_path"],
@@ -175,11 +176,13 @@ def _detect_format(path: str, explicit_format: str | None = None) -> str:
     }
     fmt = format_map.get(suffix)
     if fmt is None:
-        raise ValueError(f"Cannot detect format from extension '{suffix}'. Specify format explicitly.")
+        raise ValueError(
+            f"Cannot detect format from extension '{suffix}'. Specify format explicitly."
+        )
     return fmt
 
 
-def _read_file(path: str, fmt: str) -> "pl.DataFrame":
+def _read_file(path: str, fmt: str) -> pl.DataFrame:
     """Read a data file into a polars DataFrame."""
     readers = {
         "csv": pl.read_csv,
@@ -192,7 +195,7 @@ def _read_file(path: str, fmt: str) -> "pl.DataFrame":
     return reader(path)
 
 
-def _write_file(df: "pl.DataFrame", path: str, fmt: str) -> None:
+def _write_file(df: pl.DataFrame, path: str, fmt: str) -> None:
     """Write a polars DataFrame to a file."""
     writers = {
         "csv": df.write_csv,

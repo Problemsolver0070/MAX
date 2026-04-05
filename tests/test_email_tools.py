@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from collections import namedtuple
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,7 +18,6 @@ from max.tools.native.email_tools import (
     handle_email_search,
     handle_email_send,
 )
-
 
 # ── Helpers ───────────────────────────────────────────────────────────
 
@@ -202,15 +200,17 @@ class TestEmailSend:
         with patch("max.tools.native.email_tools.aiosmtplib") as mock_smtp:
             mock_smtp.send = AsyncMock(return_value=({}, "<msg-id-123@example.com>"))
 
-            result = await handle_email_send({
-                "to": "bob@example.com",
-                "subject": "Hello",
-                "body": "Hi Bob",
-                "smtp_host": "smtp.example.com",
-                "smtp_port": 587,
-                "user": "me@example.com",
-                "password": "secret",
-            })
+            result = await handle_email_send(
+                {
+                    "to": "bob@example.com",
+                    "subject": "Hello",
+                    "body": "Hi Bob",
+                    "smtp_host": "smtp.example.com",
+                    "smtp_port": 587,
+                    "user": "me@example.com",
+                    "password": "secret",
+                }
+            )
 
             assert result["sent"] is True
             assert result["message_id"] == "<msg-id-123@example.com>"
@@ -221,16 +221,18 @@ class TestEmailSend:
         with patch("max.tools.native.email_tools.aiosmtplib") as mock_smtp:
             mock_smtp.send = AsyncMock(return_value=({}, "<msg-456>"))
 
-            result = await handle_email_send({
-                "to": "bob@example.com",
-                "subject": "With CC",
-                "body": "Body",
-                "cc": "carol@example.com",
-                "bcc": "dave@example.com",
-                "smtp_host": "smtp.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_send(
+                {
+                    "to": "bob@example.com",
+                    "subject": "With CC",
+                    "body": "Body",
+                    "cc": "carol@example.com",
+                    "bcc": "dave@example.com",
+                    "smtp_host": "smtp.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert result["sent"] is True
             # Verify the EmailMessage was constructed with CC and BCC
@@ -244,14 +246,16 @@ class TestEmailSend:
         with patch("max.tools.native.email_tools.aiosmtplib") as mock_smtp:
             mock_smtp.send = AsyncMock(side_effect=Exception("Connection refused"))
 
-            result = await handle_email_send({
-                "to": "bob@example.com",
-                "subject": "Fail",
-                "body": "Body",
-                "smtp_host": "smtp.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_send(
+                {
+                    "to": "bob@example.com",
+                    "subject": "Fail",
+                    "body": "Body",
+                    "smtp_host": "smtp.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert result["sent"] is False
             assert "Connection refused" in result["error"]
@@ -259,22 +263,26 @@ class TestEmailSend:
     @pytest.mark.asyncio
     async def test_send_no_host(self):
         with patch("max.tools.native.email_tools._get_settings_value", return_value=""):
-            result = await handle_email_send({
-                "to": "bob@example.com",
-                "subject": "No host",
-                "body": "Body",
-            })
+            result = await handle_email_send(
+                {
+                    "to": "bob@example.com",
+                    "subject": "No host",
+                    "body": "Body",
+                }
+            )
             assert "error" in result
             assert "SMTP host" in result["error"]
 
     @pytest.mark.asyncio
     async def test_send_missing_dep(self):
         with patch("max.tools.native.email_tools.HAS_AIOSMTPLIB", False):
-            result = await handle_email_send({
-                "to": "bob@example.com",
-                "subject": "X",
-                "body": "Y",
-            })
+            result = await handle_email_send(
+                {
+                    "to": "bob@example.com",
+                    "subject": "X",
+                    "body": "Y",
+                }
+            )
             assert "error" in result
             assert "aiosmtplib" in result["error"]
 
@@ -289,16 +297,21 @@ class TestEmailSend:
         }
 
         with (
-            patch("max.tools.native.email_tools._get_settings_value", side_effect=lambda k: settings_map.get(k, "")),
+            patch(
+                "max.tools.native.email_tools._get_settings_value",
+                side_effect=lambda k: settings_map.get(k, ""),
+            ),
             patch("max.tools.native.email_tools.aiosmtplib") as mock_smtp,
         ):
             mock_smtp.send = AsyncMock(return_value=({}, "<fb-id>"))
 
-            result = await handle_email_send({
-                "to": "bob@example.com",
-                "subject": "Fallback",
-                "body": "Test",
-            })
+            result = await handle_email_send(
+                {
+                    "to": "bob@example.com",
+                    "subject": "Fallback",
+                    "body": "Test",
+                }
+            )
 
             assert result["sent"] is True
             call_args = mock_smtp.send.call_args
@@ -332,13 +345,15 @@ class TestEmailRead:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_read({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-                "folder": "INBOX",
-                "count": 10,
-            })
+            result = await handle_email_read(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                    "folder": "INBOX",
+                    "count": 10,
+                }
+            )
 
             assert "messages" in result
             assert len(result["messages"]) == 3
@@ -365,12 +380,14 @@ class TestEmailRead:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_read({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-                "count": 2,
-            })
+            await handle_email_read(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                    "count": 2,
+                }
+            )
 
             # Fetch should be called with only the last 2 UIDs
             mock_client.fetch.assert_awaited_once()
@@ -387,11 +404,13 @@ class TestEmailRead:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_read({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_read(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert result["messages"] == []
             mock_client.fetch.assert_not_awaited()
@@ -406,11 +425,13 @@ class TestEmailRead:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_read({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_read(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert "error" in result
 
@@ -424,11 +445,13 @@ class TestEmailRead:
     @pytest.mark.asyncio
     async def test_read_missing_dep(self):
         with patch("max.tools.native.email_tools.HAS_AIOIMAPLIB", False):
-            result = await handle_email_read({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_read(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
             assert "error" in result
             assert "aioimaplib" in result["error"]
 
@@ -440,11 +463,13 @@ class TestEmailRead:
         ):
             mock_imap.IMAP4_SSL = MagicMock(side_effect=Exception("Connection failed"))
 
-            result = await handle_email_read({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_read(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert "error" in result
             assert "Connection failed" in result["error"]
@@ -460,11 +485,13 @@ class TestEmailRead:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            await handle_email_read({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            await handle_email_read(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             mock_client.select.assert_awaited_once_with("INBOX")
 
@@ -479,12 +506,15 @@ class TestEmailRead:
         mock_client = _mock_imap_client(search_uids="")
 
         with (
-            patch("max.tools.native.email_tools._get_settings_value", side_effect=lambda k: settings_map.get(k, "")),
+            patch(
+                "max.tools.native.email_tools._get_settings_value",
+                side_effect=lambda k: settings_map.get(k, ""),
+            ),
             patch("max.tools.native.email_tools.aioimaplib") as mock_imap,
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_read({})
+            await handle_email_read({})
 
             mock_imap.IMAP4_SSL.assert_called_once_with(host="fallback.imap.com")
             mock_client.login.assert_awaited_once_with("fallback@example.com", "fb_pass")
@@ -513,12 +543,14 @@ class TestEmailSearch:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_search({
-                "criteria": "FROM alice",
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_search(
+                {
+                    "criteria": "FROM alice",
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert "messages" in result
             assert "count" in result
@@ -536,12 +568,14 @@ class TestEmailSearch:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_search({
-                "criteria": "FROM nobody",
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_search(
+                {
+                    "criteria": "FROM nobody",
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert result["messages"] == []
             assert result["count"] == 0
@@ -556,13 +590,15 @@ class TestEmailSearch:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            await handle_email_search({
-                "criteria": "ALL",
-                "folder": "Sent",
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            await handle_email_search(
+                {
+                    "criteria": "ALL",
+                    "folder": "Sent",
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             mock_client.select.assert_awaited_once_with("Sent")
 
@@ -576,12 +612,14 @@ class TestEmailSearch:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_search({
-                "criteria": "BAD CRITERIA",
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_search(
+                {
+                    "criteria": "BAD CRITERIA",
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert "error" in result
 
@@ -595,12 +633,14 @@ class TestEmailSearch:
     @pytest.mark.asyncio
     async def test_search_missing_dep(self):
         with patch("max.tools.native.email_tools.HAS_AIOIMAPLIB", False):
-            result = await handle_email_search({
-                "criteria": "ALL",
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_search(
+                {
+                    "criteria": "ALL",
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
             assert "error" in result
             assert "aioimaplib" in result["error"]
 
@@ -627,11 +667,13 @@ class TestEmailListFolders:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_list_folders({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_list_folders(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert "folders" in result
             assert "INBOX" in result["folders"]
@@ -649,11 +691,13 @@ class TestEmailListFolders:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_list_folders({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_list_folders(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert result["folders"] == []
 
@@ -667,11 +711,13 @@ class TestEmailListFolders:
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_list_folders({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_list_folders(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert "error" in result
 
@@ -685,11 +731,13 @@ class TestEmailListFolders:
     @pytest.mark.asyncio
     async def test_list_folders_missing_dep(self):
         with patch("max.tools.native.email_tools.HAS_AIOIMAPLIB", False):
-            result = await handle_email_list_folders({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_list_folders(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
             assert "error" in result
             assert "aioimaplib" in result["error"]
 
@@ -701,11 +749,13 @@ class TestEmailListFolders:
         ):
             mock_imap.IMAP4_SSL = MagicMock(side_effect=Exception("Auth failed"))
 
-            result = await handle_email_list_folders({
-                "imap_host": "imap.example.com",
-                "user": "me@example.com",
-                "password": "pass",
-            })
+            result = await handle_email_list_folders(
+                {
+                    "imap_host": "imap.example.com",
+                    "user": "me@example.com",
+                    "password": "pass",
+                }
+            )
 
             assert "error" in result
             assert "Auth failed" in result["error"]
@@ -721,12 +771,15 @@ class TestEmailListFolders:
         mock_client = _mock_imap_client(list_lines=[])
 
         with (
-            patch("max.tools.native.email_tools._get_settings_value", side_effect=lambda k: settings_map.get(k, "")),
+            patch(
+                "max.tools.native.email_tools._get_settings_value",
+                side_effect=lambda k: settings_map.get(k, ""),
+            ),
             patch("max.tools.native.email_tools.aioimaplib") as mock_imap,
         ):
             mock_imap.IMAP4_SSL = MagicMock(return_value=mock_client)
 
-            result = await handle_email_list_folders({})
+            await handle_email_list_folders({})
 
             mock_imap.IMAP4_SSL.assert_called_once_with(host="fallback.imap.com")
             mock_client.login.assert_awaited_once_with("fallback@example.com", "fb_pass")

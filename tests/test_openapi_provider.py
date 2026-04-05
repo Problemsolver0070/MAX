@@ -105,9 +105,7 @@ class TestOpenAPIToolProvider:
 
     # ── Spec loading ──────────────────────────────────────────────
 
-    async def test_load_spec_from_dict(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_load_spec_from_dict(self, provider: OpenAPIToolProvider) -> None:
         tools = await provider.list_tools()
         assert len(tools) == 3
 
@@ -141,9 +139,7 @@ class TestOpenAPIToolProvider:
 
     # ── Tool IDs and metadata ─────────────────────────────────────
 
-    async def test_tool_ids(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_tool_ids(self, provider: OpenAPIToolProvider) -> None:
         tools = await provider.list_tools()
         ids = {t.tool_id for t in tools}
         assert ids == {
@@ -152,28 +148,18 @@ class TestOpenAPIToolProvider:
             "petstore.getPet",
         }
 
-    async def test_provider_id(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_provider_id(self, provider: OpenAPIToolProvider) -> None:
         assert provider.provider_id == "openapi:petstore"
 
-    async def test_tool_category_is_api(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_tool_category_is_api(self, provider: OpenAPIToolProvider) -> None:
         tools = await provider.list_tools()
         assert all(t.category == "api" for t in tools)
 
-    async def test_tool_provider_id_matches(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_tool_provider_id_matches(self, provider: OpenAPIToolProvider) -> None:
         tools = await provider.list_tools()
-        assert all(
-            t.provider_id == "openapi:petstore" for t in tools
-        )
+        assert all(t.provider_id == "openapi:petstore" for t in tools)
 
-    async def test_tool_descriptions(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_tool_descriptions(self, provider: OpenAPIToolProvider) -> None:
         tools = await provider.list_tools()
         by_id = {t.tool_id: t for t in tools}
         assert by_id["petstore.listPets"].description == "List all pets"
@@ -182,23 +168,16 @@ class TestOpenAPIToolProvider:
 
     # ── Input schemas ─────────────────────────────────────────────
 
-    async def test_input_schema_list_pets(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_input_schema_list_pets(self, provider: OpenAPIToolProvider) -> None:
         tools = await provider.list_tools()
         by_id = {t.tool_id: t for t in tools}
         schema = by_id["petstore.listPets"].input_schema
         assert "limit" in schema["properties"]
         assert schema["properties"]["limit"] == {"type": "integer"}
         # limit is a query param, not required
-        assert (
-            "required" not in schema
-            or "limit" not in schema.get("required", [])
-        )
+        assert "required" not in schema or "limit" not in schema.get("required", [])
 
-    async def test_input_schema_create_pet(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_input_schema_create_pet(self, provider: OpenAPIToolProvider) -> None:
         tools = await provider.list_tools()
         by_id = {t.tool_id: t for t in tools}
         schema = by_id["petstore.createPet"].input_schema
@@ -206,9 +185,7 @@ class TestOpenAPIToolProvider:
         assert schema["properties"]["name"] == {"type": "string"}
         assert "name" in schema.get("required", [])
 
-    async def test_input_schema_get_pet(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_input_schema_get_pet(self, provider: OpenAPIToolProvider) -> None:
         tools = await provider.list_tools()
         by_id = {t.tool_id: t for t in tools}
         schema = by_id["petstore.getPet"].input_schema
@@ -249,9 +226,7 @@ class TestOpenAPIToolProvider:
 
     # ── Execute — GET ─────────────────────────────────────────────
 
-    async def test_execute_get(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_execute_get(self, provider: OpenAPIToolProvider) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = [{"id": 1, "name": "Rex"}]
@@ -259,9 +234,7 @@ class TestOpenAPIToolProvider:
         mock_client = _mock_httpx_client(response=mock_response)
 
         with patch(_PATCH_HTTPX, return_value=mock_client):
-            result = await provider.execute(
-                "petstore.listPets", {"limit": 10}
-            )
+            result = await provider.execute("petstore.listPets", {"limit": 10})
 
         assert result.success is True
         assert result.output == [{"id": 1, "name": "Rex"}]
@@ -270,16 +243,12 @@ class TestOpenAPIToolProvider:
         mock_client.request.assert_called_once()
         call_args = mock_client.request.call_args
         assert call_args[0][0] == "GET"
-        assert call_args[0][1] == (
-            "https://petstore.example.com/v1/pets"
-        )
+        assert call_args[0][1] == ("https://petstore.example.com/v1/pets")
         assert call_args[1]["params"] == {"limit": 10}
 
     # ── Execute — POST ────────────────────────────────────────────
 
-    async def test_execute_post(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_execute_post(self, provider: OpenAPIToolProvider) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 201
         mock_response.json.return_value = {"id": 42, "name": "Fido"}
@@ -287,25 +256,19 @@ class TestOpenAPIToolProvider:
         mock_client = _mock_httpx_client(response=mock_response)
 
         with patch(_PATCH_HTTPX, return_value=mock_client):
-            result = await provider.execute(
-                "petstore.createPet", {"name": "Fido"}
-            )
+            result = await provider.execute("petstore.createPet", {"name": "Fido"})
 
         assert result.success is True
         assert result.output == {"id": 42, "name": "Fido"}
 
         call_args = mock_client.request.call_args
         assert call_args[0][0] == "POST"
-        assert call_args[0][1] == (
-            "https://petstore.example.com/v1/pets"
-        )
+        assert call_args[0][1] == ("https://petstore.example.com/v1/pets")
         assert call_args[1]["json"] == {"name": "Fido"}
 
     # ── Execute — path parameters ─────────────────────────────────
 
-    async def test_execute_path_params(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_execute_path_params(self, provider: OpenAPIToolProvider) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -316,29 +279,21 @@ class TestOpenAPIToolProvider:
         mock_client = _mock_httpx_client(response=mock_response)
 
         with patch(_PATCH_HTTPX, return_value=mock_client):
-            result = await provider.execute(
-                "petstore.getPet", {"petId": "123"}
-            )
+            result = await provider.execute("petstore.getPet", {"petId": "123"})
 
         assert result.success is True
         call_args = mock_client.request.call_args
         assert call_args[0][0] == "GET"
-        assert call_args[0][1] == (
-            "https://petstore.example.com/v1/pets/123"
-        )
+        assert call_args[0][1] == ("https://petstore.example.com/v1/pets/123")
 
     # ── Execute — error cases ─────────────────────────────────────
 
-    async def test_unknown_tool(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_unknown_tool(self, provider: OpenAPIToolProvider) -> None:
         result = await provider.execute("petstore.nonexistent", {})
         assert result.success is False
         assert "Unknown tool" in result.error
 
-    async def test_execute_http_error_status(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_execute_http_error_status(self, provider: OpenAPIToolProvider) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_response.text = "Not Found"
@@ -346,33 +301,25 @@ class TestOpenAPIToolProvider:
         mock_client = _mock_httpx_client(response=mock_response)
 
         with patch(_PATCH_HTTPX, return_value=mock_client):
-            result = await provider.execute(
-                "petstore.getPet", {"petId": "999"}
-            )
+            result = await provider.execute("petstore.getPet", {"petId": "999"})
 
         assert result.success is False
         assert "404" in result.error
 
-    async def test_execute_network_error(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_execute_network_error(self, provider: OpenAPIToolProvider) -> None:
         mock_client = _mock_httpx_client(
             request_side_effect=ConnectionError("refused"),
         )
 
         with patch(_PATCH_HTTPX, return_value=mock_client):
-            result = await provider.execute(
-                "petstore.listPets", {}
-            )
+            result = await provider.execute("petstore.listPets", {})
 
         assert result.success is False
         assert "refused" in result.error
 
     # ── Health check ──────────────────────────────────────────────
 
-    async def test_health_check_healthy(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_health_check_healthy(self, provider: OpenAPIToolProvider) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
@@ -381,9 +328,7 @@ class TestOpenAPIToolProvider:
         with patch(_PATCH_HTTPX, return_value=mock_client):
             assert await provider.health_check() is True
 
-    async def test_health_check_server_error(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_health_check_server_error(self, provider: OpenAPIToolProvider) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 500
 
@@ -396,9 +341,7 @@ class TestOpenAPIToolProvider:
         p = OpenAPIToolProvider(spec_prefix="empty")
         assert await p.health_check() is False
 
-    async def test_health_check_connection_error(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_health_check_connection_error(self, provider: OpenAPIToolProvider) -> None:
         mock_client = _mock_httpx_client(
             head_side_effect=ConnectionError("refused"),
         )
@@ -432,12 +375,8 @@ class TestOpenAPIToolProvider:
 
     # ── Base URL extraction ───────────────────────────────────────
 
-    async def test_base_url_extracted(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
-        assert provider._base_url == (
-            "https://petstore.example.com/v1"
-        )
+    async def test_base_url_extracted(self, provider: OpenAPIToolProvider) -> None:
+        assert provider._base_url == ("https://petstore.example.com/v1")
 
     async def test_base_url_empty_when_no_servers(self) -> None:
         spec = {
@@ -451,9 +390,7 @@ class TestOpenAPIToolProvider:
 
     # ── Duration tracking ─────────────────────────────────────────
 
-    async def test_execute_records_duration(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_execute_records_duration(self, provider: OpenAPIToolProvider) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = []
@@ -461,9 +398,7 @@ class TestOpenAPIToolProvider:
         mock_client = _mock_httpx_client(response=mock_response)
 
         with patch(_PATCH_HTTPX, return_value=mock_client):
-            result = await provider.execute(
-                "petstore.listPets", {}
-            )
+            result = await provider.execute("petstore.listPets", {})
 
         assert result.duration_ms >= 0
 
@@ -512,9 +447,7 @@ class TestOpenAPIToolProvider:
 
     # ── Text response fallback ────────────────────────────────────
 
-    async def test_execute_text_response(
-        self, provider: OpenAPIToolProvider
-    ) -> None:
+    async def test_execute_text_response(self, provider: OpenAPIToolProvider) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.side_effect = ValueError("Not JSON")
@@ -523,9 +456,7 @@ class TestOpenAPIToolProvider:
         mock_client = _mock_httpx_client(response=mock_response)
 
         with patch(_PATCH_HTTPX, return_value=mock_client):
-            result = await provider.execute(
-                "petstore.listPets", {}
-            )
+            result = await provider.execute("petstore.listPets", {})
 
         assert result.success is True
         assert result.output == "plain text response"
