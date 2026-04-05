@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from abc import ABC, abstractmethod
@@ -83,6 +84,64 @@ class BaseAgent(ABC):
             response.output_tokens,
         )
         return response
+
+    async def think_with_tools(
+        self,
+        messages: list[dict[str, Any]],
+        system_prompt: str | None = None,
+        model: ModelType | None = None,
+        tools: list[dict[str, Any]] | None = None,
+        tool_executor: Any = None,
+    ) -> LLMResponse:
+        """Think with tool-use loop: call LLM, execute tools, feed results back.
+
+        Loops until the LLM responds without tool calls or max_turns is hit.
+        """
+        conversation = list(messages)
+
+        while True:
+            response = await self.think(
+                messages=conversation,
+                system_prompt=system_prompt,
+                model=model,
+                tools=tools,
+            )
+
+            if not response.tool_calls or tool_executor is None:
+                return response
+
+            # Build assistant message with tool_use blocks
+            assistant_content: list[dict[str, Any]] = []
+            if response.text:
+                assistant_content.append({"type": "text", "text": response.text})
+            for tc in response.tool_calls:
+                assistant_content.append(
+                    {
+                        "type": "tool_use",
+                        "id": tc.id,
+                        "name": tc.name,
+                        "input": tc.input,
+                    }
+                )
+            conversation.append({"role": "assistant", "content": assistant_content})
+
+            # Execute each tool and build tool_result messages
+            tool_results_content: list[dict[str, Any]] = []
+            for tc in response.tool_calls:
+                result = await tool_executor.execute(
+                    self.config.name,
+                    tc.name,
+                    tc.input,
+                )
+                tool_results_content.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tc.id,
+                        "content": json.dumps(result.output) if result.success else result.error,
+                        "is_error": not result.success,
+                    }
+                )
+            conversation.append({"role": "user", "content": tool_results_content})
 
     @abstractmethod
     async def run(self, input_data: dict[str, Any]) -> dict[str, Any]: ...

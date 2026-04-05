@@ -80,6 +80,13 @@ class Settings(BaseSettings):
     quality_max_rules_per_audit: int = 5
     quality_max_recent_verdicts: int = 50
 
+    # Tool system
+    tool_execution_timeout_seconds: int = 60
+    tool_max_concurrent: int = 10
+    tool_audit_enabled: bool = True
+    tool_shell_timeout_seconds: int = 30
+    tool_http_timeout_seconds: int = 30
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""

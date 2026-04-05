@@ -107,3 +107,11 @@ def test_quality_gate_settings_defaults(settings):
     assert settings.quality_high_score_threshold == 0.9
     assert settings.quality_max_rules_per_audit == 5
     assert settings.quality_max_recent_verdicts == 50
+
+
+def test_tool_system_settings_defaults(settings):
+    assert settings.tool_execution_timeout_seconds == 60
+    assert settings.tool_max_concurrent == 10
+    assert settings.tool_audit_enabled is True
+    assert settings.tool_shell_timeout_seconds == 30
+    assert settings.tool_http_timeout_seconds == 30

@@ -1,15 +1,21 @@
 """Tool registry for managing Max's tool catalog.
 
 Handles registration, permission checking, category filtering,
-and conversion to Anthropic API format for LLM tool_use calls.
+provider management, per-agent access policies, and conversion
+to Anthropic API format for LLM tool_use calls.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
+
+from max.tools.models import AgentToolPolicy
+
+if TYPE_CHECKING:
+    from max.tools.providers.base import ToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +33,8 @@ class ToolDefinition(BaseModel):
     cost_tier: str = "low"
     reliability: float = 1.0
     avg_latency_ms: int = 0
+    provider_id: str = "native"
+    timeout_seconds: int | None = None
 
 
 class ToolRegistry:
@@ -38,6 +46,10 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self._tools: dict[str, ToolDefinition] = {}
+        self._providers: dict[str, ToolProvider] = {}
+        self._policies: dict[str, AgentToolPolicy] = {}
+
+    # ── Tool registration ──────────────────────────────────────────────
 
     def register(self, tool: ToolDefinition) -> None:
         """Register a tool definition in the registry."""
@@ -56,27 +68,81 @@ class ToolRegistry:
         """Return all tools in a given category."""
         return [t for t in self._tools.values() if t.category == category]
 
-    def check_permission(self, tool_id: str, allowed: list[str]) -> bool:
-        """Check if a tool's required permissions are all in the allowed set.
+    # ── Permission checking ────────────────────────────────────────────
 
-        Returns False if the tool is not found or if any required
-        permission is missing from the allowed list.
-        """
+    def check_permission(self, tool_id: str, allowed: list[str]) -> bool:
+        """Check if a tool's required permissions are all in the allowed set."""
         tool = self._tools.get(tool_id)
         if tool is None:
             return False
         return all(perm in allowed for perm in tool.permissions)
 
+    # ── Provider management ────────────────────────────────────────────
+
+    async def register_provider(self, provider: ToolProvider) -> None:
+        """Register a provider and discover its tools."""
+        self._providers[provider.provider_id] = provider
+        tools = await provider.list_tools()
+        for tool in tools:
+            self.register(tool)
+        logger.info(
+            "Registered provider %s with %d tools",
+            provider.provider_id,
+            len(tools),
+        )
+
+    def get_provider(self, provider_id: str) -> ToolProvider | None:
+        """Get a provider by its ID."""
+        return self._providers.get(provider_id)
+
+    async def refresh_provider(self, provider_id: str) -> None:
+        """Re-discover tools from a provider (for MCP servers that add/remove tools)."""
+        provider = self._providers.get(provider_id)
+        if provider is None:
+            return
+        # Remove old tools from this provider
+        self._tools = {tid: td for tid, td in self._tools.items() if td.provider_id != provider_id}
+        # Re-discover
+        tools = await provider.list_tools()
+        for tool in tools:
+            self.register(tool)
+        logger.info("Refreshed provider %s: %d tools", provider_id, len(tools))
+
+    # ── Agent access policies ──────────────────────────────────────────
+
+    def set_agent_policy(self, policy: AgentToolPolicy) -> None:
+        """Set the tool access policy for an agent."""
+        self._policies[policy.agent_name] = policy
+
+    def check_agent_access(self, agent_name: str, tool_id: str) -> bool:
+        """Check if an agent is allowed to use a tool."""
+        policy = self._policies.get(agent_name)
+        if policy is None:
+            return False
+
+        # Denied tools always override
+        if tool_id in policy.denied_tools:
+            return False
+
+        # Check explicit tool allowlist
+        if tool_id in policy.allowed_tools:
+            return True
+
+        # Check category allowlist
+        tool = self._tools.get(tool_id)
+        if tool and tool.category in policy.allowed_categories:
+            return True
+
+        return False
+
+    def get_agent_tools(self, agent_name: str) -> list[ToolDefinition]:
+        """Get all tools an agent is allowed to use."""
+        return [t for t in self._tools.values() if self.check_agent_access(agent_name, t.tool_id)]
+
+    # ── Anthropic API format ───────────────────────────────────────────
+
     def to_anthropic_tools(self, tool_ids: list[str]) -> list[dict[str, Any]]:
-        """Convert selected tools to Anthropic API tool_use format.
-
-        Args:
-            tool_ids: List of tool IDs to include.
-
-        Returns:
-            List of dicts in Anthropic tool format with name,
-            description, and input_schema keys.
-        """
+        """Convert selected tools to Anthropic API tool_use format."""
         result = []
         for tool_id in tool_ids:
             tool = self._tools.get(tool_id)
