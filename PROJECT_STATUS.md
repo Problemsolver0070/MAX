@@ -1,8 +1,8 @@
 # Max — Project Status
 
-> **Last updated:** 2026-04-04
-> **Current phase:** Phase 4 Complete + Merged, Phase 5 not started
-> **Branch:** `master` (Phase 1 + Phase 2 + Phase 3 + Phase 4 merged)
+> **Last updated:** 2026-04-05
+> **Current phase:** Phase 5 Complete + Merged, Phase 6 not started
+> **Branch:** `master` (Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 merged)
 
 ---
 
@@ -15,7 +15,8 @@
 3. Check `docs/superpowers/specs/2026-04-04-max-phase3-communication-layer.md` for Phase 3 design spec
 4. Check `docs/superpowers/specs/2026-04-05-max-phase4-command-chain.md` for Phase 4 design spec
 5. Check `docs/superpowers/plans/2026-04-05-max-phase4-command-chain.md` for Phase 4 plan (completed)
-6. **Next step:** Brainstorm + write Phase 5 (Quality Gate) spec and plan, then execute
+6. Check `docs/superpowers/plans/2026-04-05-max-phase5-quality-gate.md` for Phase 5 plan (completed)
+7. **Next step:** Brainstorm + write Phase 6 (Tool Arsenal) spec and plan, then execute
 
 ---
 
@@ -141,18 +142,53 @@ Key features:
 - TTL-based eviction for stale pending clarifications
 - Defensive guards on all bus message parsing
 
-### Database Schema (12 tables + alterations)
+### Phase 5: Quality Gate (Complete + Merged)
+
+```
+src/max/quality/
+├── __init__.py               # Package exports (10 public symbols)
+├── models.py                 # 6 Pydantic v2 models (AuditRequest, AuditResponse, SubtaskAuditItem, etc.)
+├── auditor.py                # AuditorAgent: ephemeral blind audit (no worker reasoning/confidence)
+├── director.py               # QualityDirectorAgent: persistent audit lifecycle management
+├── rules.py                  # RuleEngine: LLM-powered rule extraction from failures, patterns from successes
+└── store.py                  # QualityStore: async CRUD for audit_reports, ledger, rules, patterns
+
+src/max/db/migrations/
+├── 002_memory_system.sql
+├── 003_communication.sql
+├── 004_command_chain.sql
+└── 005_quality_gate.sql      # quality_rules, quality_patterns tables + audit_reports alterations
+```
+
+**369 tests passing (53 new), lint/format clean.**
+
+Key features:
+- Post-execution audit pipeline: Orchestrator → audit.request → Director → audit.complete
+- Blind audit protocol: auditors never see worker reasoning/confidence (enforced at type level)
+- QualityDirectorAgent spawns ephemeral AuditorAgent per subtask via asyncio.gather
+- Fix loop: on failure, orchestrator re-executes with augmented prompts, up to max_fix_attempts
+- Append-only Quality Ledger with 7 entry types (audit_verdict, fix_attempt, user_correction, etc.)
+- Quality Ratchet: rules never deleted, only superseded; patterns reinforced over time
+- LLM-powered rule extraction from failures, pattern extraction from high-scoring passes
+- Audit timeout enforcement via asyncio.wait_for
+- MetricCollector integration for audit_score/audit_duration tracking
+- Composite get_quality_pulse() for coordinator state updates
+
+### Database Schema (14 tables + alterations)
 Phase 1: tasks, subtasks, audit_reports, intents, results, status_updates, clarification_requests, context_anchors, quality_ledger, memory_embeddings
 Phase 2: graph_nodes, graph_edges, compaction_log, performance_metrics, shelved_improvements
 Phase 2 ALTERs: context_anchors (9 new lifecycle/permanence columns), memory_embeddings (8 new columns + FTS)
 Phase 3: conversation_messages
 Phase 4 ALTERs: subtasks (phase_number, tool_categories, worker_agent_id, retry_count, quality_criteria, estimated_complexity), tasks (priority)
+Phase 5: quality_rules, quality_patterns
+Phase 5 ALTERs: audit_reports (fix_instructions, strengths, fix_attempt)
 
 ### Config (env vars)
 Phase 1: ANTHROPIC_API_KEY, POSTGRES_*, REDIS_*
 Phase 2: VOYAGE_API_KEY, MEMORY_COMPACTION_INTERVAL_SECONDS(60), MEMORY_WARM_BUDGET_TOKENS(100000), MEMORY_GRAPH_CACHE_MAX_NODES(500), MEMORY_EMBEDDING_DIMENSION(1024), MEMORY_ANCHOR_RE_EVALUATION_INTERVAL_HOURS(6)
 Phase 3: TELEGRAM_BOT_TOKEN, COMM_BATCH_INTERVAL_SECONDS(30), COMM_MAX_BATCH_SIZE(10), COMM_CONTEXT_WINDOW_SIZE(20), COMM_MEDIA_DIR, COMM_WEBHOOK_ENABLED(False), COMM_WEBHOOK_HOST/PORT/PATH/URL/SECRET
 Phase 4: COORDINATOR_MODEL(claude-opus-4-6), PLANNER_MODEL, ORCHESTRATOR_MODEL, WORKER_MODEL, COORDINATOR_MAX_ACTIVE_TASKS(5), PLANNER_MAX_SUBTASKS(10), WORKER_MAX_RETRIES(2), WORKER_TIMEOUT_SECONDS(300)
+Phase 5: QUALITY_DIRECTOR_MODEL(claude-opus-4-6), AUDITOR_MODEL(claude-opus-4-6), QUALITY_MAX_FIX_ATTEMPTS(2), QUALITY_AUDIT_TIMEOUT_SECONDS(120), QUALITY_PASS_THRESHOLD(0.7), QUALITY_HIGH_SCORE_THRESHOLD(0.9), QUALITY_MAX_RULES_PER_AUDIT(5), QUALITY_MAX_RECENT_VERDICTS(50)
 
 ---
 
@@ -216,6 +252,20 @@ Phase 4: COORDINATOR_MODEL(claude-opus-4-6), PLANNER_MODEL, ORCHESTRATOR_MODEL, 
 
 ---
 
+## Phase 5 Code Review — ALL RESOLVED
+
+6 findings from final code review, all fixed in commit `d6e313f`:
+
+### Important (6/6 fixed):
+1. ~~Missing fix_attempt ledger entry type~~ — ✅ Added record_fix_attempt() to QualityStore, called from orchestrator fix loop
+2. ~~Missing record_user_correction() stub~~ — ✅ Added to QualityStore for Phase 6 integration
+3. ~~Missing get_quality_pulse() composite method~~ — ✅ Added to QualityStore (pass_rate, avg_score, rules_count, top_patterns)
+4. ~~Missing MetricCollector integration~~ — ✅ Optional metric_collector in Director, records audit_score + audit_duration
+5. ~~quality_audit_timeout_seconds defined but never used~~ — ✅ Wrapped asyncio.gather in wait_for with timeout
+6. ~~auditor_model/quality_director_model never wired~~ — ✅ Director._resolve_model() maps string → ModelType for AuditorAgent
+
+---
+
 ## Phase Roadmap
 
 | Phase | Name | Status | Next Action |
@@ -224,8 +274,8 @@ Phase 4: COORDINATOR_MODEL(claude-opus-4-6), PLANNER_MODEL, ORCHESTRATOR_MODEL, 
 | 2 | Memory System | ✅ Complete + Merged | All 14 review findings addressed |
 | 3 | Communication Layer | ✅ Complete + Merged | 247 tests, 7 modules, 4 review fixes |
 | 4 | Command Chain | ✅ Complete + Merged | 316 tests, 8 modules, 5 review fixes |
-| 5 | Quality Gate | Not started | Brainstorm → write plan → implement |
-| 6 | Tool Arsenal | Not started | Depends on Phase 4 |
+| 5 | Quality Gate | ✅ Complete + Merged | 369 tests, 6 modules, 6 review fixes |
+| 6 | Tool Arsenal | Not started | Brainstorm → write plan → implement |
 | 7 | Evolution System | Not started | Depends on all above |
 
 **Post-build:** Anti-degradation strategy (Venu has ideas, wants system built first)
