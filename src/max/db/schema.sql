@@ -379,3 +379,171 @@ CREATE TABLE IF NOT EXISTS tool_invocations (
 CREATE INDEX IF NOT EXISTS idx_tool_invocations_agent ON tool_invocations(agent_id);
 CREATE INDEX IF NOT EXISTS idx_tool_invocations_tool ON tool_invocations(tool_id);
 CREATE INDEX IF NOT EXISTS idx_tool_invocations_created ON tool_invocations(created_at DESC);
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- Phase 7: Evolution System tables
+-- ═════════════════════════════════════════════════════════════════════════════
+
+-- ── Evolution proposals ────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS evolution_proposals (
+    id UUID PRIMARY KEY,
+    scout_type VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL,
+    target_type VARCHAR(50) NOT NULL,
+    target_id VARCHAR(200),
+    impact_score REAL DEFAULT 0.0,
+    effort_score REAL DEFAULT 0.0,
+    risk_score REAL DEFAULT 0.0,
+    priority REAL DEFAULT 0.0,
+    status VARCHAR(20) DEFAULT 'proposed',
+    experiment_id UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_evolution_proposals_status
+    ON evolution_proposals(status);
+CREATE INDEX IF NOT EXISTS idx_evolution_proposals_priority
+    ON evolution_proposals(priority DESC);
+CREATE INDEX IF NOT EXISTS idx_evolution_proposals_experiment
+    ON evolution_proposals(experiment_id) WHERE experiment_id IS NOT NULL;
+
+-- ── Evolution snapshots ────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS evolution_snapshots (
+    id UUID PRIMARY KEY,
+    experiment_id UUID NOT NULL,
+    snapshot_data JSONB NOT NULL,
+    metrics_baseline JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_evolution_snapshots_experiment
+    ON evolution_snapshots(experiment_id);
+
+-- ── Evolution prompts (live + candidate) ───────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS evolution_prompts (
+    id UUID PRIMARY KEY,
+    agent_type VARCHAR(100) NOT NULL,
+    prompt_text TEXT NOT NULL,
+    version INT DEFAULT 1,
+    experiment_id UUID,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_evolution_prompts_live
+    ON evolution_prompts(agent_type) WHERE experiment_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_evolution_prompts_experiment
+    ON evolution_prompts(experiment_id) WHERE experiment_id IS NOT NULL;
+
+-- ── Evolution tool configs (live + candidate) ──────────────────────────────
+
+CREATE TABLE IF NOT EXISTS evolution_tool_configs (
+    id UUID PRIMARY KEY,
+    tool_id VARCHAR(200) NOT NULL,
+    config JSONB NOT NULL,
+    version INT DEFAULT 1,
+    experiment_id UUID,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_evolution_tool_configs_live
+    ON evolution_tool_configs(tool_id) WHERE experiment_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_evolution_tool_configs_experiment
+    ON evolution_tool_configs(experiment_id) WHERE experiment_id IS NOT NULL;
+
+-- ── Evolution context rules ────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS evolution_context_rules (
+    id UUID PRIMARY KEY,
+    rule_name VARCHAR(200) NOT NULL,
+    condition JSONB NOT NULL,
+    action JSONB NOT NULL,
+    priority INT DEFAULT 0,
+    version INT DEFAULT 1,
+    experiment_id UUID,
+    active BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_evolution_context_rules_active
+    ON evolution_context_rules(active) WHERE active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_evolution_context_rules_experiment
+    ON evolution_context_rules(experiment_id) WHERE experiment_id IS NOT NULL;
+
+-- ── Preference profiles ────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS preference_profiles (
+    id UUID PRIMARY KEY,
+    user_id VARCHAR(200) NOT NULL UNIQUE,
+    communication JSONB DEFAULT '{}',
+    code_prefs JSONB DEFAULT '{}',
+    workflow JSONB DEFAULT '{}',
+    domain_knowledge JSONB DEFAULT '{}',
+    observation_log JSONB DEFAULT '[]',
+    version INT DEFAULT 1,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_preference_profiles_user
+    ON preference_profiles(user_id);
+
+-- ── Capability map ─────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS capability_map (
+    id UUID PRIMARY KEY,
+    domain VARCHAR(100) NOT NULL,
+    task_type VARCHAR(100) NOT NULL,
+    score REAL NOT NULL,
+    sample_count INT DEFAULT 1,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(domain, task_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_capability_map_domain
+    ON capability_map(domain);
+
+-- ── Failure taxonomy ───────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS failure_taxonomy (
+    id UUID PRIMARY KEY,
+    category VARCHAR(100) NOT NULL,
+    subcategory VARCHAR(100) NOT NULL,
+    details JSONB DEFAULT '{}',
+    source_task_id UUID,
+    recorded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_failure_taxonomy_category
+    ON failure_taxonomy(category);
+CREATE INDEX IF NOT EXISTS idx_failure_taxonomy_recorded
+    ON failure_taxonomy(recorded_at DESC);
+
+-- ── Evolution journal ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS evolution_journal (
+    id UUID PRIMARY KEY,
+    experiment_id UUID,
+    action VARCHAR(50) NOT NULL,
+    details JSONB DEFAULT '{}',
+    recorded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_evolution_journal_experiment
+    ON evolution_journal(experiment_id) WHERE experiment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_evolution_journal_recorded
+    ON evolution_journal(recorded_at DESC);
+
+-- ── Confidence calibration ─────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS confidence_calibration (
+    id UUID PRIMARY KEY,
+    predicted_score REAL NOT NULL,
+    actual_score REAL NOT NULL,
+    task_type VARCHAR(100),
+    recorded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_confidence_calibration_recorded
+    ON confidence_calibration(recorded_at DESC);
