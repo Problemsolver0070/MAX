@@ -37,6 +37,25 @@ from max.tools.native.docker_tools import (
     handle_docker_run,
     handle_docker_stop,
 )
+from max.tools.native.email_tools import (
+    TOOL_DEFINITIONS as EMAIL_TOOLS,
+)
+from max.tools.native.email_tools import (
+    handle_email_list_folders,
+    handle_email_read,
+    handle_email_search,
+    handle_email_send,
+)
+from max.tools.native.document_tools import (
+    TOOL_DEFINITIONS as DOCUMENT_TOOLS,
+)
+from max.tools.native.document_tools import (
+    handle_document_parse_json,
+    handle_document_read_pdf,
+    handle_document_read_spreadsheet,
+    handle_document_write_csv,
+    handle_document_write_spreadsheet,
+)
 from max.tools.native.file_tools import (
     TOOL_DEFINITIONS as FILE_TOOLS,
 )
@@ -57,11 +76,29 @@ from max.tools.native.git_tools import (
     handle_git_log,
     handle_git_status,
 )
+from max.tools.native.media_tools import (
+    TOOL_DEFINITIONS as MEDIA_TOOLS,
+)
+from max.tools.native.media_tools import (
+    handle_media_audio_transcribe,
+    handle_media_image_convert,
+    handle_media_image_info,
+    handle_media_image_resize,
+    handle_media_video_info,
+)
 from max.tools.native.process_tools import (
     TOOL_DEFINITIONS as PROCESS_TOOLS,
 )
 from max.tools.native.process_tools import (
     handle_process_list,
+)
+from max.tools.native.scraping_tools import (
+    TOOL_DEFINITIONS as SCRAPING_TOOLS,
+)
+from max.tools.native.scraping_tools import (
+    handle_web_extract_links,
+    handle_web_scrape,
+    handle_web_search,
 )
 from max.tools.native.search_tools import (
     TOOL_DEFINITIONS as SEARCH_TOOLS,
@@ -109,18 +146,41 @@ _HANDLER_MAP = {
     "docker.run": handle_docker_run,
     "docker.stop": handle_docker_stop,
     "docker.logs": handle_docker_logs,
+    "docker.build": handle_docker_build,
+    "docker.compose": handle_docker_compose,
     "database.postgres_query": handle_database_postgres_query,
     "database.postgres_execute": handle_database_postgres_execute,
     "database.sqlite_query": handle_database_sqlite_query,
     "database.sqlite_execute": handle_database_sqlite_execute,
     "database.redis_get": handle_database_redis_get,
     "database.redis_set": handle_database_redis_set,
-    "docker.build": handle_docker_build,
-    "docker.compose": handle_docker_compose,
+    "document.read_pdf": handle_document_read_pdf,
+    "document.read_spreadsheet": handle_document_read_spreadsheet,
+    "document.write_csv": handle_document_write_csv,
+    "document.write_spreadsheet": handle_document_write_spreadsheet,
+    "document.parse_json": handle_document_parse_json,
+    "web.scrape": handle_web_scrape,
+    "web.extract_links": handle_web_extract_links,
+    "web.search": handle_web_search,
+    "email.send": handle_email_send,
+    "email.read": handle_email_read,
+    "email.search": handle_email_search,
+    "email.list_folders": handle_email_list_folders,
 }
 
 ALL_TOOL_DEFINITIONS = (
-    CODE_TOOLS + DATABASE_TOOLS + DOCKER_TOOLS + FILE_TOOLS + SHELL_TOOLS + GIT_TOOLS + WEB_TOOLS + PROCESS_TOOLS + SEARCH_TOOLS
+    CODE_TOOLS
+    + DATABASE_TOOLS
+    + DOCKER_TOOLS
+    + DOCUMENT_TOOLS
+    + EMAIL_TOOLS
+    + FILE_TOOLS
+    + SHELL_TOOLS
+    + GIT_TOOLS
+    + WEB_TOOLS
+    + SCRAPING_TOOLS
+    + PROCESS_TOOLS
+    + SEARCH_TOOLS
 )
 
 
