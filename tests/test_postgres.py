@@ -353,3 +353,31 @@ async def test_conversation_messages_insert_and_fetch(db):
     assert row["direction"] == "inbound"
     assert row["content"] == "Hello Max"
     assert row["platform_message_id"] == 42
+
+
+@pytest.mark.asyncio
+async def test_subtasks_has_phase4_columns(db):
+    """Verify subtasks table has Phase 4 columns."""
+    cols = await db.fetchall(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'subtasks'"
+    )
+    col_names = {row["column_name"] for row in cols}
+    expected = {
+        "phase_number",
+        "tool_categories",
+        "worker_agent_id",
+        "retry_count",
+        "quality_criteria",
+        "estimated_complexity",
+    }
+    assert expected.issubset(col_names), f"Missing columns: {expected - col_names}"
+
+
+@pytest.mark.asyncio
+async def test_tasks_has_priority_column(db):
+    """Verify tasks table has Phase 4 priority column."""
+    cols = await db.fetchall(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'tasks'"
+    )
+    col_names = {row["column_name"] for row in cols}
+    assert "priority" in col_names

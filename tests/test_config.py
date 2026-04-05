@@ -85,3 +85,14 @@ def test_comm_settings_defaults(settings):
     assert settings.comm_webhook_path == "/webhook/telegram"
     assert settings.comm_webhook_url == ""
     assert settings.comm_webhook_secret == ""
+
+
+def test_command_chain_settings_defaults(settings):
+    assert settings.coordinator_model == "claude-opus-4-6"
+    assert settings.planner_model == "claude-opus-4-6"
+    assert settings.orchestrator_model == "claude-opus-4-6"
+    assert settings.worker_model == "claude-opus-4-6"
+    assert settings.coordinator_max_active_tasks == 5
+    assert settings.planner_max_subtasks == 10
+    assert settings.worker_max_retries == 2
+    assert settings.worker_timeout_seconds == 300

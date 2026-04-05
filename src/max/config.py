@@ -60,6 +60,16 @@ class Settings(BaseSettings):
     comm_webhook_url: str = ""
     comm_webhook_secret: str = ""
 
+    # Command chain
+    coordinator_model: str = "claude-opus-4-6"
+    planner_model: str = "claude-opus-4-6"
+    orchestrator_model: str = "claude-opus-4-6"
+    worker_model: str = "claude-opus-4-6"
+    coordinator_max_active_tasks: int = 5
+    planner_max_subtasks: int = 10
+    worker_max_retries: int = 2
+    worker_timeout_seconds: int = 300
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
