@@ -15,6 +15,7 @@ from max.command.task_store import TaskStore
 from max.config import Settings
 from max.llm.client import LLMClient
 from max.models.tasks import TaskStatus
+from max.quality.models import AuditRequest, AuditResponse, SubtaskAuditItem
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class OrchestratorAgent(BaseAgent):
         settings: Settings,
         task_store: TaskStore,
         runner: AgentRunner,
+        quality_store: Any | None = None,
     ) -> None:
         context = AgentContext(bus=bus, db=db, warm_memory=warm_memory)
         super().__init__(config=config, llm=llm, context=context)
@@ -68,7 +70,9 @@ class OrchestratorAgent(BaseAgent):
         self._settings = settings
         self._task_store = task_store
         self._runner = runner
+        self._quality_store = quality_store
         self._cancelled_tasks: set[uuid_mod.UUID] = set()
+        self._pending_audits: dict[uuid_mod.UUID, dict[str, Any]] = {}
 
     # -- BaseAgent abstract method -------------------------------------------
 
@@ -83,6 +87,7 @@ class OrchestratorAgent(BaseAgent):
         await self._bus.subscribe("tasks.execute", self.on_execute)
         await self._bus.subscribe("tasks.cancel", self.on_cancel)
         await self._bus.subscribe("tasks.context_update", self.on_context_update)
+        await self._bus.subscribe("audit.complete", self.on_audit_complete)
         await self.on_start()
         logger.info("OrchestratorAgent started")
 
@@ -91,6 +96,7 @@ class OrchestratorAgent(BaseAgent):
         await self._bus.unsubscribe("tasks.execute", self.on_execute)
         await self._bus.unsubscribe("tasks.cancel", self.on_cancel)
         await self._bus.unsubscribe("tasks.context_update", self.on_context_update)
+        await self._bus.unsubscribe("audit.complete", self.on_audit_complete)
         await self.on_stop()
         logger.info("OrchestratorAgent stopped")
 
@@ -167,25 +173,41 @@ class OrchestratorAgent(BaseAgent):
             if not all_succeeded:
                 break
 
-        # Assemble final result.
+        # Route to audit or fail.
         if all_succeeded and prior_results:
-            combined_content = "\n\n".join(r.content for r in prior_results if r.content)
-            avg_confidence = sum(r.confidence for r in prior_results) / len(prior_results)
+            # Build audit request (blind — no reasoning/confidence).
+            audit_items = []
+            for r in prior_results:
+                st_info = next((s for s in db_subtasks if s["id"] == r.subtask_id), None)
+                audit_items.append(
+                    SubtaskAuditItem(
+                        subtask_id=r.subtask_id,
+                        description=st_info["description"] if st_info else "",
+                        content=r.content,
+                        quality_criteria=(st_info.get("quality_criteria", {}) if st_info else {}),
+                    )
+                )
 
-            await self._task_store.create_result(
+            task_data = await self._task_store.get_task(task_id)
+            goal_anchor = task_data["goal_anchor"] if task_data else plan.goal_anchor
+
+            self._pending_audits[task_id] = {
+                "prior_results": prior_results,
+                "db_subtasks": db_subtasks,
+                "fix_attempt": 0,
+                "goal_anchor": goal_anchor,
+                "quality_criteria": (task_data.get("quality_criteria", {}) if task_data else {}),
+            }
+
+            await self._task_store.update_task_status(task_id, TaskStatus.AUDITING)
+
+            audit_req = AuditRequest(
                 task_id=task_id,
-                content=combined_content,
-                confidence=avg_confidence,
+                goal_anchor=goal_anchor,
+                subtask_results=audit_items,
+                quality_criteria=(task_data.get("quality_criteria", {}) if task_data else {}),
             )
-            await self._bus.publish(
-                "tasks.complete",
-                {
-                    "task_id": str(task_id),
-                    "success": True,
-                    "result_content": combined_content,
-                    "confidence": avg_confidence,
-                },
-            )
+            await self._bus.publish("audit.request", audit_req.model_dump(mode="json"))
         else:
             error_msgs = [r.error for r in failed_results if r.error]
             if not error_msgs:
@@ -224,6 +246,181 @@ class OrchestratorAgent(BaseAgent):
     async def on_context_update(self, channel: str, data: dict[str, Any]) -> None:
         """Handle a context update for a running task (informational)."""
         logger.info("Context update for task %s", data.get("task_id"))
+
+    async def on_audit_complete(self, channel: str, data: dict[str, Any]) -> None:
+        """Handle audit results — complete task or trigger fix loop."""
+        raw_id = data.get("task_id")
+        if raw_id is None:
+            logger.error("on_audit_complete received data without task_id: %s", data)
+            return
+        task_id = uuid_mod.UUID(raw_id) if isinstance(raw_id, str) else raw_id
+        response = AuditResponse.model_validate(data)
+
+        pending = self._pending_audits.pop(task_id, None)
+        if pending is None:
+            logger.error("on_audit_complete: no pending audit for task %s", task_id)
+            return
+
+        if response.success:
+            # All subtasks passed audit — assemble final result.
+            prior_results = pending["prior_results"]
+            combined_content = "\n\n".join(r.content for r in prior_results if r.content)
+            avg_confidence = (
+                sum(r.confidence for r in prior_results) / len(prior_results)
+                if prior_results
+                else 0.0
+            )
+
+            await self._task_store.create_result(
+                task_id=task_id,
+                content=combined_content,
+                confidence=avg_confidence,
+            )
+            await self._bus.publish(
+                "tasks.complete",
+                {
+                    "task_id": str(task_id),
+                    "success": True,
+                    "result_content": combined_content,
+                    "confidence": avg_confidence,
+                },
+            )
+        else:
+            fix_attempt = pending["fix_attempt"]
+            max_attempts = self._settings.quality_max_fix_attempts
+
+            if fix_attempt >= max_attempts:
+                # Exhausted fix attempts — fail the task.
+                issue_summary = "; ".join(f.instructions for f in response.fix_required)
+                await self._bus.publish(
+                    "tasks.complete",
+                    {
+                        "task_id": str(task_id),
+                        "success": False,
+                        "error": (
+                            f"Audit failed after {max_attempts} fix attempts: {issue_summary}"
+                        ),
+                    },
+                )
+                return
+
+            # Record fix attempt to quality ledger.
+            if self._quality_store is not None:
+                for fix in response.fix_required:
+                    await self._quality_store.record_fix_attempt(
+                        task_id=task_id,
+                        subtask_id=fix.subtask_id,
+                        fix_attempt=fix_attempt + 1,
+                        fix_instructions=fix.instructions,
+                    )
+
+            # Re-execute failed subtasks with fix instructions.
+            await self._task_store.update_task_status(task_id, TaskStatus.FIXING)
+
+            failed_ids = {f.subtask_id for f in response.fix_required}
+            prior_results = pending["prior_results"]
+            db_subtasks = pending["db_subtasks"]
+
+            new_results: list[SubtaskResult] = []
+            for r in prior_results:
+                if r.subtask_id not in failed_ids:
+                    new_results.append(r)
+
+            for fix in response.fix_required:
+                st_info = next((s for s in db_subtasks if s["id"] == fix.subtask_id), None)
+                if st_info is None:
+                    continue
+
+                # Build augmented worker prompt with fix instructions.
+                description = st_info["description"]
+                fix_prompt = (
+                    f"{description}\n\n"
+                    f"IMPORTANT: Your previous output was audited and found "
+                    f"these issues:\n"
+                    f"{fix.instructions}\n\n"
+                    f"The specific problems were:\n"
+                    + "\n".join(
+                        f"- [{iss.get('category', 'issue')}] {iss.get('description', '')}"
+                        for iss in fix.issues
+                    )
+                )
+
+                config = WorkerConfig(
+                    subtask_id=fix.subtask_id,
+                    task_id=task_id,
+                    system_prompt=WORKER_BASE_PROMPT.format(
+                        description=fix_prompt,
+                        prior_results=("(fix attempt — see audit feedback above)"),
+                    ),
+                    quality_criteria=st_info.get("quality_criteria", {}),
+                )
+                context = AgentContext(bus=self._bus, db=self._db, warm_memory=self._warm)
+
+                try:
+                    result = await asyncio.wait_for(
+                        self._runner.run(config, context),
+                        timeout=self._settings.worker_timeout_seconds,
+                    )
+                except TimeoutError:
+                    result = SubtaskResult(
+                        subtask_id=fix.subtask_id,
+                        task_id=task_id,
+                        success=False,
+                        error="Worker timed out during fix attempt",
+                    )
+
+                if result.success:
+                    new_results.append(result)
+                    await self._task_store.update_subtask_result(
+                        result.subtask_id,
+                        {
+                            "content": result.content,
+                            "confidence": result.confidence,
+                            "reasoning": result.reasoning,
+                        },
+                    )
+                else:
+                    # Fix attempt itself failed — mark task as failed.
+                    await self._bus.publish(
+                        "tasks.complete",
+                        {
+                            "task_id": str(task_id),
+                            "success": False,
+                            "error": result.error or "Fix attempt failed",
+                        },
+                    )
+                    return
+
+            # Re-audit with new results.
+            audit_items = []
+            for r in new_results:
+                st_info = next((s for s in db_subtasks if s["id"] == r.subtask_id), None)
+                audit_items.append(
+                    SubtaskAuditItem(
+                        subtask_id=r.subtask_id,
+                        description=st_info["description"] if st_info else "",
+                        content=r.content,
+                        quality_criteria=(st_info.get("quality_criteria", {}) if st_info else {}),
+                    )
+                )
+
+            self._pending_audits[task_id] = {
+                "prior_results": new_results,
+                "db_subtasks": db_subtasks,
+                "fix_attempt": fix_attempt + 1,
+                "goal_anchor": pending["goal_anchor"],
+                "quality_criteria": pending["quality_criteria"],
+            }
+
+            await self._task_store.update_task_status(task_id, TaskStatus.AUDITING)
+
+            audit_req = AuditRequest(
+                task_id=task_id,
+                goal_anchor=pending["goal_anchor"],
+                subtask_results=audit_items,
+                quality_criteria=pending["quality_criteria"],
+            )
+            await self._bus.publish("audit.request", audit_req.model_dump(mode="json"))
 
     # -- Internal helpers -----------------------------------------------------
 

@@ -381,3 +381,30 @@ async def test_tasks_has_priority_column(db):
     )
     col_names = {row["column_name"] for row in cols}
     assert "priority" in col_names
+
+
+@pytest.mark.asyncio
+async def test_quality_rules_table_exists(db):
+    """Verify Phase 5 quality_rules table is created."""
+    tables = await db.fetchall("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+    table_names = {row["tablename"] for row in tables}
+    assert "quality_rules" in table_names
+
+
+@pytest.mark.asyncio
+async def test_quality_patterns_table_exists(db):
+    """Verify Phase 5 quality_patterns table is created."""
+    tables = await db.fetchall("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+    table_names = {row["tablename"] for row in tables}
+    assert "quality_patterns" in table_names
+
+
+@pytest.mark.asyncio
+async def test_audit_reports_has_phase5_columns(db):
+    """Verify audit_reports has Phase 5 columns."""
+    cols = await db.fetchall(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'audit_reports'"
+    )
+    col_names = {row["column_name"] for row in cols}
+    expected = {"fix_instructions", "strengths", "fix_attempt"}
+    assert expected.issubset(col_names), f"Missing columns: {expected - col_names}"
