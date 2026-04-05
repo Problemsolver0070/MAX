@@ -1,8 +1,8 @@
 # Max — Project Status
 
 > **Last updated:** 2026-04-05
-> **Current phase:** Phase 5 Complete + Merged, Phase 6 not started
-> **Branch:** `master` (Phase 1 + Phase 2 + Phase 3 + Phase 4 + Phase 5 merged)
+> **Current phase:** Phase 6A Complete + Merged, Phase 6B not started
+> **Branch:** `master` (Phase 1-5 + Phase 6A merged)
 
 ---
 
@@ -16,7 +16,9 @@
 4. Check `docs/superpowers/specs/2026-04-05-max-phase4-command-chain.md` for Phase 4 design spec
 5. Check `docs/superpowers/plans/2026-04-05-max-phase4-command-chain.md` for Phase 4 plan (completed)
 6. Check `docs/superpowers/plans/2026-04-05-max-phase5-quality-gate.md` for Phase 5 plan (completed)
-7. **Next step:** Brainstorm + write Phase 6 (Tool Arsenal) spec and plan, then execute
+7. Check `docs/superpowers/specs/2026-04-05-max-phase6a-tool-framework.md` for Phase 6A design spec
+8. Check `docs/superpowers/plans/2026-04-05-max-phase6a-tool-framework.md` for Phase 6A plan (completed)
+9. **Next step:** Brainstorm + write Phase 6B (Full Tool Arsenal) spec and plan, then Phase 7
 
 ---
 
@@ -174,7 +176,45 @@ Key features:
 - MetricCollector integration for audit_score/audit_duration tracking
 - Composite get_quality_pulse() for coordinator state updates
 
-### Database Schema (14 tables + alterations)
+### Phase 6A: Tool Framework (Complete + Merged)
+
+```
+src/max/tools/
+├── __init__.py               # Package exports (10 public symbols)
+├── models.py                 # ToolResult, AgentToolPolicy, ProviderHealth
+├── registry.py               # ToolRegistry: definitions, providers, policies, agent access control
+├── executor.py               # ToolExecutor: 6-step pipeline (resolve→permission→provider→health→timeout→audit)
+├── store.py                  # ToolInvocationStore: audit trail to PostgreSQL
+├── providers/
+│   ├── __init__.py           # Provider exports
+│   ├── base.py               # ToolProvider ABC (list_tools, execute, health_check)
+│   ├── native.py             # NativeToolProvider: Python async function handlers
+│   └── mcp.py                # MCPToolProvider: MCP server integration (stdio transport)
+└── native/
+    ├── __init__.py           # register_all_native_tools() + ALL_TOOL_DEFINITIONS
+    ├── file_tools.py         # 6 tools: read, write, edit, list, glob, delete
+    ├── shell_tools.py        # 1 tool: shell execute (timeout, 50KB cap)
+    ├── git_tools.py          # 4 tools: status, diff, log, commit
+    ├── web_tools.py          # 2 tools: http_fetch, http_request (httpx)
+    ├── process_tools.py      # 1 tool: process list (psutil)
+    └── search_tools.py       # 1 tool: grep search (regex, recursive)
+```
+
+**465 tests passing (96 new), lint/format clean.**
+
+Key features:
+- Three-layer architecture: ToolRegistry → ToolExecutor → ToolProviders
+- NativeToolProvider for Python async handlers, MCPToolProvider for MCP servers
+- 15 core native tools across 6 categories (file, shell, git, web, process, search)
+- Per-agent tool access policies with deny-overrides-allow semantics
+- ToolExecutor 6-step pipeline: resolve → permission → provider → health check → timeout → audit
+- BaseAgent.think_with_tools() for agent tool loop (Anthropic API format)
+- ToolInvocationStore audit trail to PostgreSQL tool_invocations table
+- Provider health checks before every tool dispatch
+- asyncio.wait_for timeout enforcement per tool execution
+- 50KB output caps on shell and web tools
+
+### Database Schema (15 tables + alterations)
 Phase 1: tasks, subtasks, audit_reports, intents, results, status_updates, clarification_requests, context_anchors, quality_ledger, memory_embeddings
 Phase 2: graph_nodes, graph_edges, compaction_log, performance_metrics, shelved_improvements
 Phase 2 ALTERs: context_anchors (9 new lifecycle/permanence columns), memory_embeddings (8 new columns + FTS)
@@ -182,6 +222,7 @@ Phase 3: conversation_messages
 Phase 4 ALTERs: subtasks (phase_number, tool_categories, worker_agent_id, retry_count, quality_criteria, estimated_complexity), tasks (priority)
 Phase 5: quality_rules, quality_patterns
 Phase 5 ALTERs: audit_reports (fix_instructions, strengths, fix_attempt)
+Phase 6A: tool_invocations (9 columns + 3 indexes)
 
 ### Config (env vars)
 Phase 1: ANTHROPIC_API_KEY, POSTGRES_*, REDIS_*
@@ -189,6 +230,7 @@ Phase 2: VOYAGE_API_KEY, MEMORY_COMPACTION_INTERVAL_SECONDS(60), MEMORY_WARM_BUD
 Phase 3: TELEGRAM_BOT_TOKEN, COMM_BATCH_INTERVAL_SECONDS(30), COMM_MAX_BATCH_SIZE(10), COMM_CONTEXT_WINDOW_SIZE(20), COMM_MEDIA_DIR, COMM_WEBHOOK_ENABLED(False), COMM_WEBHOOK_HOST/PORT/PATH/URL/SECRET
 Phase 4: COORDINATOR_MODEL(claude-opus-4-6), PLANNER_MODEL, ORCHESTRATOR_MODEL, WORKER_MODEL, COORDINATOR_MAX_ACTIVE_TASKS(5), PLANNER_MAX_SUBTASKS(10), WORKER_MAX_RETRIES(2), WORKER_TIMEOUT_SECONDS(300)
 Phase 5: QUALITY_DIRECTOR_MODEL(claude-opus-4-6), AUDITOR_MODEL(claude-opus-4-6), QUALITY_MAX_FIX_ATTEMPTS(2), QUALITY_AUDIT_TIMEOUT_SECONDS(120), QUALITY_PASS_THRESHOLD(0.7), QUALITY_HIGH_SCORE_THRESHOLD(0.9), QUALITY_MAX_RULES_PER_AUDIT(5), QUALITY_MAX_RECENT_VERDICTS(50)
+Phase 6A: TOOL_EXECUTION_TIMEOUT_SECONDS(60), TOOL_MAX_CONCURRENT(10), TOOL_AUDIT_ENABLED(True), TOOL_SHELL_TIMEOUT_SECONDS(30), TOOL_HTTP_TIMEOUT_SECONDS(30)
 
 ---
 
@@ -266,6 +308,25 @@ Phase 5: QUALITY_DIRECTOR_MODEL(claude-opus-4-6), AUDITOR_MODEL(claude-opus-4-6)
 
 ---
 
+## Phase 6A Code Review — ALL RESOLVED
+
+7 findings from final code review, all fixed in commit `75806a9`:
+
+### Critical (2/2 fixed):
+1. ~~Missing health check in executor pipeline~~ — ✅ Added provider health check before dispatch
+2. ~~Missing refresh_provider() method~~ — ✅ Added to ToolRegistry per spec Section 4.1
+
+### Important (3/3 fixed):
+3. ~~Inline import in think_with_tools()~~ — ✅ Moved `import json` to module top-level
+4. ~~file.delete can't handle directories~~ — ✅ Added `path.rmdir()` for empty directories
+5. ~~Shell output unbounded~~ — ✅ Added MAX_OUTPUT = 50,000 character cap
+
+### Lint (20+ fixes):
+6. ~~20 unused imports (F401)~~ — ✅ Removed
+7. ~~4 line-too-long (E501), import sorting (I001)~~ — ✅ Fixed, 13 files reformatted
+
+---
+
 ## Phase Roadmap
 
 | Phase | Name | Status | Next Action |
@@ -275,7 +336,8 @@ Phase 5: QUALITY_DIRECTOR_MODEL(claude-opus-4-6), AUDITOR_MODEL(claude-opus-4-6)
 | 3 | Communication Layer | ✅ Complete + Merged | 247 tests, 7 modules, 4 review fixes |
 | 4 | Command Chain | ✅ Complete + Merged | 316 tests, 8 modules, 5 review fixes |
 | 5 | Quality Gate | ✅ Complete + Merged | 369 tests, 6 modules, 6 review fixes |
-| 6 | Tool Arsenal | Not started | Brainstorm → write plan → implement |
+| 6A | Tool Framework | ✅ Complete + Merged | 465 tests, 15 tools, 3-layer architecture, 7 review fixes |
+| 6B | Full Tool Arsenal | Not started | Browser, email, calendar, AWS, Docker, DB, data, media, OpenAPI |
 | 7 | Evolution System | Not started | Depends on all above |
 
 **Post-build:** Anti-degradation strategy (Venu has ideas, wants system built first)
