@@ -165,7 +165,7 @@ class RollbackEvent(BaseModel):
 
     experiment_id: uuid.UUID
     reason: str
-    snapshot_id: uuid.UUID
+    snapshot_id: uuid.UUID | None = None
     rolled_back_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

@@ -86,37 +86,43 @@ class EvolutionDirectorAgent:
 
         Checks anti-degradation and runs pipeline for pending proposals.
         """
-        logger.info("Evolution trigger received: %s", data)
-        should_freeze = await self.check_anti_degradation()
-        if should_freeze:
-            await self.freeze("Anti-degradation: consecutive quality drops detected")
-            return
+        try:
+            logger.info("Evolution trigger received: %s", data)
+            should_freeze = await self.check_anti_degradation()
+            if should_freeze:
+                await self.freeze("Anti-degradation: consecutive quality drops detected")
+                return
 
-        proposals = await self._evo_store.get_proposals(status="proposed")
-        for row in proposals:
-            proposal = EvolutionProposal.model_validate(row)
-            if self.evaluate_proposal(proposal):
-                await self.run_pipeline(proposal)
+            proposals = await self._evo_store.get_proposals(status="proposed")
+            for row in proposals:
+                proposal = EvolutionProposal.model_validate(row)
+                if self.evaluate_proposal(proposal):
+                    await self.run_pipeline(proposal)
+        except Exception:
+            logger.exception("Error handling evolution trigger")
 
     async def _on_proposal(self, channel: str, data: dict[str, Any]) -> None:
         """Handle an incoming evolution proposal from a scout.
 
         Evaluates priority and runs the pipeline if accepted.
         """
-        proposal = EvolutionProposal.model_validate(data)
-        logger.info(
-            "Received proposal %s (priority=%.2f): %s",
-            proposal.id,
-            proposal.computed_priority,
-            proposal.description,
-        )
+        try:
+            proposal = EvolutionProposal.model_validate(data)
+            logger.info(
+                "Received proposal %s (priority=%.2f): %s",
+                proposal.id,
+                proposal.computed_priority,
+                proposal.description,
+            )
 
-        if not self.evaluate_proposal(proposal):
-            logger.info("Proposal %s rejected (priority too low)", proposal.id)
-            await self._evo_store.update_proposal_status(proposal.id, "rejected")
-            return
+            if not self.evaluate_proposal(proposal):
+                logger.info("Proposal %s rejected (priority too low)", proposal.id)
+                await self._evo_store.update_proposal_status(proposal.id, "rejected")
+                return
 
-        await self.run_pipeline(proposal)
+            await self.run_pipeline(proposal)
+        except Exception:
+            logger.exception("Error handling evolution proposal")
 
     # ── Evaluate (Step 2) ─────────────────────────────────────────────────
 
@@ -347,7 +353,7 @@ class EvolutionDirectorAgent:
         event = RollbackEvent(
             experiment_id=experiment_id,
             reason=reason,
-            snapshot_id=snapshot_id or uuid.uuid4(),
+            snapshot_id=snapshot_id,
         )
         await self._evo_store.record_to_ledger(
             "evolution_rollback", event.model_dump(mode="json")
