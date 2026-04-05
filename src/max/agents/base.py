@@ -116,12 +116,14 @@ class BaseAgent(ABC):
             if response.text:
                 assistant_content.append({"type": "text", "text": response.text})
             for tc in response.tool_calls:
-                assistant_content.append({
-                    "type": "tool_use",
-                    "id": tc.id,
-                    "name": tc.name,
-                    "input": tc.input,
-                })
+                assistant_content.append(
+                    {
+                        "type": "tool_use",
+                        "id": tc.id,
+                        "name": tc.name,
+                        "input": tc.input,
+                    }
+                )
             conversation.append({"role": "assistant", "content": assistant_content})
 
             # Execute each tool and build tool_result messages
@@ -132,12 +134,14 @@ class BaseAgent(ABC):
                     tc.name,
                     tc.input,
                 )
-                tool_results_content.append({
-                    "type": "tool_result",
-                    "tool_use_id": tc.id,
-                    "content": _json.dumps(result.output) if result.success else result.error,
-                    "is_error": not result.success,
-                })
+                tool_results_content.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tc.id,
+                        "content": _json.dumps(result.output) if result.success else result.error,
+                        "is_error": not result.success,
+                    }
+                )
             conversation.append({"role": "user", "content": tool_results_content})
 
     @abstractmethod

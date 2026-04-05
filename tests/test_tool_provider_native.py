@@ -2,7 +2,6 @@
 
 import pytest
 
-from max.tools.models import ToolResult
 from max.tools.providers.native import NativeToolProvider
 from max.tools.registry import ToolDefinition
 

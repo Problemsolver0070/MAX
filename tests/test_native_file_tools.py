@@ -1,8 +1,5 @@
 """Tests for native file system tools."""
 
-import os
-import tempfile
-
 import pytest
 
 from max.tools.native.file_tools import (
@@ -58,11 +55,13 @@ class TestFileEdit:
     async def test_search_and_replace(self, tmp_path):
         f = tmp_path / "edit.txt"
         f.write_text("hello world\nfoo bar\n")
-        result = await handle_file_edit({
-            "path": str(f),
-            "old_string": "foo bar",
-            "new_string": "baz qux",
-        })
+        result = await handle_file_edit(
+            {
+                "path": str(f),
+                "old_string": "foo bar",
+                "new_string": "baz qux",
+            }
+        )
         assert result["replacements"] == 1
         assert "baz qux" in f.read_text()
 
@@ -70,11 +69,13 @@ class TestFileEdit:
     async def test_no_match(self, tmp_path):
         f = tmp_path / "edit.txt"
         f.write_text("hello world\n")
-        result = await handle_file_edit({
-            "path": str(f),
-            "old_string": "nonexistent",
-            "new_string": "replaced",
-        })
+        result = await handle_file_edit(
+            {
+                "path": str(f),
+                "old_string": "nonexistent",
+                "new_string": "replaced",
+            }
+        )
         assert result["replacements"] == 0
 
 

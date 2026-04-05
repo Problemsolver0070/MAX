@@ -18,7 +18,11 @@ TOOL_DEFINITIONS = [
         input_schema={
             "type": "object",
             "properties": {
-                "limit": {"type": "integer", "description": "Max processes to return", "default": 50},
+                "limit": {
+                    "type": "integer",
+                    "description": "Max processes to return",
+                    "default": 50,
+                },
             },
         },
     ),
@@ -32,12 +36,14 @@ async def handle_process_list(inputs: dict[str, Any]) -> dict[str, Any]:
     for proc in psutil.process_iter(["pid", "name", "cpu_percent", "memory_percent"]):
         try:
             info = proc.info
-            processes.append({
-                "pid": info["pid"],
-                "name": info["name"],
-                "cpu_percent": info.get("cpu_percent", 0.0),
-                "memory_percent": round(info.get("memory_percent", 0.0), 2),
-            })
+            processes.append(
+                {
+                    "pid": info["pid"],
+                    "name": info["name"],
+                    "cpu_percent": info.get("cpu_percent", 0.0),
+                    "memory_percent": round(info.get("memory_percent", 0.0), 2),
+                }
+            )
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
         if len(processes) >= limit:
