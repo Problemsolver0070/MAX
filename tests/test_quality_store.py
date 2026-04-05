@@ -187,6 +187,73 @@ class TestRecordLedgerEntries:
         assert len(entries) == 1
 
 
+class TestRecordFixAttempt:
+    @pytest.mark.asyncio
+    async def test_inserts_fix_attempt_ledger_entry(self, store, mock_db):
+        await store.record_fix_attempt(
+            task_id=uuid.uuid4(),
+            subtask_id=uuid.uuid4(),
+            fix_attempt=1,
+            fix_instructions="Fix the output",
+        )
+        call_args = mock_db.execute.call_args
+        assert "INSERT INTO quality_ledger" in call_args[0][0]
+        assert call_args[0][2] == "fix_attempt"
+
+
+class TestRecordUserCorrection:
+    @pytest.mark.asyncio
+    async def test_inserts_user_correction_ledger_entry(self, store, mock_db):
+        await store.record_user_correction(
+            task_id=uuid.uuid4(),
+            subtask_id=uuid.uuid4(),
+            correction="The output should include error handling",
+        )
+        call_args = mock_db.execute.call_args
+        assert "INSERT INTO quality_ledger" in call_args[0][0]
+        assert call_args[0][2] == "user_correction"
+
+    @pytest.mark.asyncio
+    async def test_includes_metadata(self, store, mock_db):
+        await store.record_user_correction(
+            task_id=uuid.uuid4(),
+            subtask_id=uuid.uuid4(),
+            correction="Needs more tests",
+            metadata={"source": "telegram"},
+        )
+        call_args = mock_db.execute.call_args
+        import json
+
+        content = json.loads(call_args[0][3])
+        assert content["source"] == "telegram"
+        assert content["correction"] == "Needs more tests"
+
+
+class TestGetQualityPulse:
+    @pytest.mark.asyncio
+    async def test_returns_composite_pulse(self, store, mock_db):
+        mock_db.fetchone.side_effect = [
+            {"pass_rate": 0.85},  # get_pass_rate
+            {"avg_score": 0.78},  # get_avg_score
+        ]
+        mock_db.fetchall.side_effect = [
+            [{"id": uuid.uuid4(), "rule": "test", "category": "v"}],  # get_active_rules
+            [  # get_patterns
+                {
+                    "pattern": "good pattern",
+                    "reinforcement_count": 3,
+                    "category": "code_quality",
+                }
+            ],
+        ]
+        pulse = await store.get_quality_pulse(hours=24)
+        assert pulse["pass_rate"] == 0.85
+        assert pulse["avg_score"] == 0.78
+        assert pulse["active_rules_count"] == 1
+        assert len(pulse["top_patterns"]) == 1
+        assert pulse["top_patterns"][0]["pattern"] == "good pattern"
+
+
 class TestQualityMetrics:
     @pytest.mark.asyncio
     async def test_get_pass_rate(self, store, mock_db):

@@ -303,6 +303,83 @@ class TestFixLoop:
         assert complete["success"] is False
 
 
+class TestFixAttemptLedger:
+    @pytest.mark.asyncio
+    async def test_records_fix_attempt_to_quality_store(self, monkeypatch):
+        orch, bus, task_store, runner = _make_orchestrator(monkeypatch)
+
+        quality_store = AsyncMock()
+        quality_store.record_fix_attempt = AsyncMock()
+        orch._quality_store = quality_store
+
+        task_id = uuid.uuid4()
+        failed_id = uuid.uuid4()
+
+        orch._pending_audits[task_id] = {
+            "prior_results": [
+                SubtaskResult(
+                    subtask_id=failed_id,
+                    task_id=task_id,
+                    success=True,
+                    content="bad",
+                    confidence=0.8,
+                ),
+            ],
+            "db_subtasks": [
+                {
+                    "id": failed_id,
+                    "description": "test task",
+                    "quality_criteria": {},
+                    "phase_number": 1,
+                },
+            ],
+            "fix_attempt": 0,
+            "goal_anchor": "Test",
+            "quality_criteria": {},
+        }
+
+        runner.run = AsyncMock(
+            return_value=SubtaskResult(
+                subtask_id=failed_id,
+                task_id=task_id,
+                success=True,
+                content="fixed",
+                confidence=0.9,
+            )
+        )
+
+        audit_response = {
+            "task_id": str(task_id),
+            "success": False,
+            "verdicts": [
+                {
+                    "subtask_id": str(failed_id),
+                    "verdict": "fail",
+                    "score": 0.3,
+                    "goal_alignment": 0.4,
+                    "issues": [{"category": "q", "description": "bad"}],
+                },
+            ],
+            "overall_score": 0.3,
+            "fix_required": [
+                {
+                    "subtask_id": str(failed_id),
+                    "instructions": "Fix the output",
+                    "original_content": "bad",
+                    "issues": [{"category": "q", "description": "bad"}],
+                },
+            ],
+        }
+        await orch.on_audit_complete("audit.complete", audit_response)
+
+        quality_store.record_fix_attempt.assert_called_once_with(
+            task_id=task_id,
+            subtask_id=failed_id,
+            fix_attempt=1,
+            fix_instructions="Fix the output",
+        )
+
+
 class TestAuditSubscription:
     @pytest.mark.asyncio
     async def test_start_subscribes_to_audit_complete(self, monkeypatch):

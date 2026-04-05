@@ -60,6 +60,7 @@ class OrchestratorAgent(BaseAgent):
         settings: Settings,
         task_store: TaskStore,
         runner: AgentRunner,
+        quality_store: Any | None = None,
     ) -> None:
         context = AgentContext(bus=bus, db=db, warm_memory=warm_memory)
         super().__init__(config=config, llm=llm, context=context)
@@ -69,6 +70,7 @@ class OrchestratorAgent(BaseAgent):
         self._settings = settings
         self._task_store = task_store
         self._runner = runner
+        self._quality_store = quality_store
         self._cancelled_tasks: set[uuid_mod.UUID] = set()
         self._pending_audits: dict[uuid_mod.UUID, dict[str, Any]] = {}
 
@@ -301,6 +303,16 @@ class OrchestratorAgent(BaseAgent):
                     },
                 )
                 return
+
+            # Record fix attempt to quality ledger.
+            if self._quality_store is not None:
+                for fix in response.fix_required:
+                    await self._quality_store.record_fix_attempt(
+                        task_id=task_id,
+                        subtask_id=fix.subtask_id,
+                        fix_attempt=fix_attempt + 1,
+                        fix_instructions=fix.instructions,
+                    )
 
             # Re-execute failed subtasks with fix instructions.
             await self._task_store.update_task_status(task_id, TaskStatus.FIXING)
