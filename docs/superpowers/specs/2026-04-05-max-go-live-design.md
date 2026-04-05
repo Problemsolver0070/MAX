@@ -88,9 +88,11 @@ Take Max from tested modules to a running, deployable product on Azure. This des
 ### 4.3 Endpoints
 
 ```
-Health & Operations (public, no auth):
+Health & Operations (no auth — required by Azure Container Apps liveness/readiness probes):
   GET  /health                         → Agent status, infrastructure status, uptime
   GET  /ready                          → Checks DB + Redis + bus connectivity
+  Note: These are only accessible on the internal Container Apps port,
+        NOT exposed through API Management to the public internet.
 
 Messaging (authenticated):
   POST /api/v1/messages                → Send a message to Max
