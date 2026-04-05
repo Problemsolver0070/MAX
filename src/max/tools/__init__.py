@@ -5,6 +5,7 @@ from max.tools.models import AgentToolPolicy, ProviderHealth, ToolResult
 from max.tools.providers.base import ToolProvider
 from max.tools.providers.mcp import MCPToolProvider
 from max.tools.providers.native import NativeToolProvider
+from max.tools.providers.openapi import OpenAPIToolProvider
 from max.tools.registry import ToolDefinition, ToolRegistry
 from max.tools.store import ToolInvocationStore
 
@@ -12,6 +13,7 @@ __all__ = [
     "AgentToolPolicy",
     "MCPToolProvider",
     "NativeToolProvider",
+    "OpenAPIToolProvider",
     "ProviderHealth",
     "ToolDefinition",
     "ToolExecutor",

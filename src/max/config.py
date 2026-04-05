@@ -87,6 +87,25 @@ class Settings(BaseSettings):
     tool_shell_timeout_seconds: int = 30
     tool_http_timeout_seconds: int = 30
 
+    # Email (SMTP/IMAP)
+    email_smtp_host: str = ""
+    email_smtp_port: int = 587
+    email_imap_host: str = ""
+    email_user: str = ""
+    email_password: str = ""
+
+    # Calendar (CalDAV)
+    caldav_url: str = ""
+    caldav_user: str = ""
+    caldav_password: str = ""
+
+    # Web search
+    brave_search_api_key: str = ""
+
+    # Browser
+    browser_headless: bool = True
+    browser_max_pages: int = 5
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
