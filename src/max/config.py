@@ -123,6 +123,39 @@ class Settings(BaseSettings):
     sentinel_timeout_seconds: int = 600
     sentinel_judge_temperature: float = 0.0
 
+    # ── Go-Live Infrastructure ─────────────────────────────────────────
+    # API Server
+    max_host: str = "0.0.0.0"
+    max_port: int = 8080
+    max_api_keys: str = ""  # comma-separated valid API keys
+
+    # Rate Limiting
+    rate_limit_api: str = "60/minute"
+    rate_limit_messaging: str = "30/minute"
+
+    # Circuit Breaker
+    llm_circuit_breaker_threshold: int = 5
+    llm_circuit_breaker_cooldown_seconds: int = 60
+
+    # Bus Transport
+    bus_transport: str = "streams"  # "streams" or "pubsub"
+    bus_dead_letter_max_retries: int = 3
+    bus_stream_max_len: int = 10000
+    bus_consumer_group: str = "max_workers"
+    bus_consumer_name: str = "worker-1"
+
+    # Task Recovery
+    task_recovery_enabled: bool = True
+    task_timeout_watchdog_interval_seconds: int = 60
+
+    # Observability
+    otel_enabled: bool = False
+    otel_service_name: str = "max"
+    otel_exporter_endpoint: str = ""
+
+    # Azure
+    azure_key_vault_url: str = ""
+
     @property
     def postgres_dsn(self) -> str:
         """Build a PostgreSQL connection string from individual components."""
