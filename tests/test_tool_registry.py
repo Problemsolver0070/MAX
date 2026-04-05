@@ -1,6 +1,10 @@
 # tests/test_tool_registry.py
+from unittest.mock import AsyncMock
+
 import pytest
 
+from max.tools.models import AgentToolPolicy
+from max.tools.providers.native import NativeToolProvider
 from max.tools.registry import ToolDefinition, ToolRegistry
 
 
@@ -107,3 +111,112 @@ def test_to_anthropic_tools(registry):
     assert tools[0]["name"] == "file.read"
     assert tools[0]["description"] == "Read a file from the filesystem"
     assert tools[0]["input_schema"]["properties"]["path"]["type"] == "string"
+
+
+class TestProviderManagement:
+    @pytest.mark.asyncio
+    async def test_register_provider_discovers_tools(self, registry):
+        provider = NativeToolProvider()
+
+        async def handler(inputs):
+            return "ok"
+
+        provider.register_tool(
+            ToolDefinition(
+                tool_id="test.tool",
+                category="test",
+                description="A test tool",
+                provider_id="native",
+            ),
+            handler,
+        )
+        await registry.register_provider(provider)
+        assert registry.get("test.tool") is not None
+
+    @pytest.mark.asyncio
+    async def test_get_provider(self, registry):
+        provider = NativeToolProvider()
+        await registry.register_provider(provider)
+        assert registry.get_provider("native") is provider
+
+    @pytest.mark.asyncio
+    async def test_get_provider_not_found(self, registry):
+        assert registry.get_provider("nonexistent") is None
+
+
+class TestAgentAccess:
+    def test_check_agent_access_allowed_tool(self, registry):
+        registry.register(
+            ToolDefinition(
+                tool_id="file.read",
+                category="code",
+                description="Read",
+                provider_id="native",
+            )
+        )
+        policy = AgentToolPolicy(
+            agent_name="worker",
+            allowed_tools=["file.read"],
+        )
+        registry.set_agent_policy(policy)
+        assert registry.check_agent_access("worker", "file.read") is True
+
+    def test_check_agent_access_denied(self, registry):
+        registry.register(
+            ToolDefinition(
+                tool_id="shell.execute",
+                category="code",
+                description="Shell",
+                provider_id="native",
+            )
+        )
+        policy = AgentToolPolicy(
+            agent_name="worker",
+            allowed_tools=["file.read"],
+        )
+        registry.set_agent_policy(policy)
+        assert registry.check_agent_access("worker", "shell.execute") is False
+
+    def test_check_agent_access_by_category(self, registry):
+        registry.register(
+            ToolDefinition(
+                tool_id="file.read",
+                category="code",
+                description="Read",
+                provider_id="native",
+            )
+        )
+        policy = AgentToolPolicy(
+            agent_name="worker",
+            allowed_categories=["code"],
+        )
+        registry.set_agent_policy(policy)
+        assert registry.check_agent_access("worker", "file.read") is True
+
+    def test_denied_overrides_allowed(self, registry):
+        registry.register(
+            ToolDefinition(
+                tool_id="shell.execute",
+                category="code",
+                description="Shell",
+                provider_id="native",
+            )
+        )
+        policy = AgentToolPolicy(
+            agent_name="worker",
+            allowed_categories=["code"],
+            denied_tools=["shell.execute"],
+        )
+        registry.set_agent_policy(policy)
+        assert registry.check_agent_access("worker", "shell.execute") is False
+
+    def test_no_policy_denies_all(self, registry):
+        registry.register(
+            ToolDefinition(
+                tool_id="file.read",
+                category="code",
+                description="Read",
+                provider_id="native",
+            )
+        )
+        assert registry.check_agent_access("unknown_agent", "file.read") is False
