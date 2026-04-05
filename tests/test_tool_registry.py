@@ -142,6 +142,41 @@ class TestProviderManagement:
     async def test_get_provider_not_found(self, registry):
         assert registry.get_provider("nonexistent") is None
 
+    @pytest.mark.asyncio
+    async def test_refresh_provider(self, registry):
+        provider = NativeToolProvider()
+
+        async def handler(inputs):
+            return "ok"
+
+        provider.register_tool(
+            ToolDefinition(
+                tool_id="test.old",
+                category="test",
+                description="Old tool",
+                provider_id="native",
+            ),
+            handler,
+        )
+        await registry.register_provider(provider)
+        assert registry.get("test.old") is not None
+
+        # Simulate provider adding a new tool and removing old
+        provider._tools.clear()
+        provider._handlers.clear()
+        provider.register_tool(
+            ToolDefinition(
+                tool_id="test.new",
+                category="test",
+                description="New tool",
+                provider_id="native",
+            ),
+            handler,
+        )
+        await registry.refresh_provider("native")
+        assert registry.get("test.old") is None
+        assert registry.get("test.new") is not None
+
 
 class TestAgentAccess:
     def test_check_agent_access_allowed_tool(self, registry):

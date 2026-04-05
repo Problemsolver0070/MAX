@@ -87,7 +87,7 @@ TOOL_DEFINITIONS = [
     ToolDefinition(
         tool_id="file.delete",
         category="code",
-        description="Delete a file.",
+        description="Delete a file or empty directory.",
         permissions=["fs.write"],
         provider_id="native",
         input_schema={
@@ -175,9 +175,12 @@ async def handle_file_glob(inputs: dict[str, Any]) -> dict[str, Any]:
 
 
 async def handle_file_delete(inputs: dict[str, Any]) -> dict[str, Any]:
-    """Delete a file."""
+    """Delete a file or empty directory."""
     path = Path(inputs["path"])
     if not path.exists():
         raise FileNotFoundError(f"File not found: {path}")
-    path.unlink()
+    if path.is_dir():
+        path.rmdir()  # Only works on empty directories
+    else:
+        path.unlink()
     return {"deleted": True}

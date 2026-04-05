@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from abc import ABC, abstractmethod
@@ -96,8 +97,6 @@ class BaseAgent(ABC):
 
         Loops until the LLM responds without tool calls or max_turns is hit.
         """
-        import json as _json
-
         conversation = list(messages)
 
         while True:
@@ -138,7 +137,7 @@ class BaseAgent(ABC):
                     {
                         "type": "tool_result",
                         "tool_use_id": tc.id,
-                        "content": _json.dumps(result.output) if result.success else result.error,
+                        "content": json.dumps(result.output) if result.success else result.error,
                         "is_error": not result.success,
                     }
                 )

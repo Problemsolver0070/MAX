@@ -95,6 +95,19 @@ class ToolRegistry:
         """Get a provider by its ID."""
         return self._providers.get(provider_id)
 
+    async def refresh_provider(self, provider_id: str) -> None:
+        """Re-discover tools from a provider (for MCP servers that add/remove tools)."""
+        provider = self._providers.get(provider_id)
+        if provider is None:
+            return
+        # Remove old tools from this provider
+        self._tools = {tid: td for tid, td in self._tools.items() if td.provider_id != provider_id}
+        # Re-discover
+        tools = await provider.list_tools()
+        for tool in tools:
+            self.register(tool)
+        logger.info("Refreshed provider %s: %d tools", provider_id, len(tools))
+
     # ── Agent access policies ──────────────────────────────────────────
 
     def set_agent_policy(self, policy: AgentToolPolicy) -> None:

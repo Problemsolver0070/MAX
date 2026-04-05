@@ -132,6 +132,17 @@ class TestTimeout:
         assert "timed out" in result.error.lower()
 
 
+class TestProviderUnhealthy:
+    @pytest.mark.asyncio
+    async def test_rejects_when_provider_unhealthy(self):
+        executor, registry, store, provider = _make_executor()
+        # Mock provider to be unhealthy
+        provider.health_check = AsyncMock(return_value=False)
+        result = await executor.execute("worker", "file.read", {"path": "/tmp"})
+        assert result.success is False
+        assert "unhealthy" in result.error.lower()
+
+
 class TestAuditDisabled:
     @pytest.mark.asyncio
     async def test_no_audit_when_disabled(self):
