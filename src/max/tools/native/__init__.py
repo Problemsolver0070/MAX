@@ -5,6 +5,38 @@ Call ``register_all_native_tools(provider)`` to register every built-in tool.
 
 from __future__ import annotations
 
+from max.tools.native.code_tools import (
+    TOOL_DEFINITIONS as CODE_TOOLS,
+)
+from max.tools.native.code_tools import (
+    handle_code_ast_parse,
+    handle_code_dependencies,
+    handle_code_format,
+    handle_code_lint,
+    handle_code_test,
+)
+from max.tools.native.database_tools import (
+    TOOL_DEFINITIONS as DATABASE_TOOLS,
+)
+from max.tools.native.database_tools import (
+    handle_database_postgres_execute,
+    handle_database_postgres_query,
+    handle_database_redis_get,
+    handle_database_redis_set,
+    handle_database_sqlite_execute,
+    handle_database_sqlite_query,
+)
+from max.tools.native.docker_tools import (
+    TOOL_DEFINITIONS as DOCKER_TOOLS,
+)
+from max.tools.native.docker_tools import (
+    handle_docker_build,
+    handle_docker_compose,
+    handle_docker_list_containers,
+    handle_docker_logs,
+    handle_docker_run,
+    handle_docker_stop,
+)
 from max.tools.native.file_tools import (
     TOOL_DEFINITIONS as FILE_TOOLS,
 )
@@ -53,6 +85,11 @@ from max.tools.native.web_tools import (
 from max.tools.providers.native import NativeToolProvider
 
 _HANDLER_MAP = {
+    "code.ast_parse": handle_code_ast_parse,
+    "code.lint": handle_code_lint,
+    "code.format": handle_code_format,
+    "code.test": handle_code_test,
+    "code.dependencies": handle_code_dependencies,
     "file.read": handle_file_read,
     "file.write": handle_file_write,
     "file.edit": handle_file_edit,
@@ -68,10 +105,22 @@ _HANDLER_MAP = {
     "http.request": handle_http_request,
     "process.list": handle_process_list,
     "grep.search": handle_grep_search,
+    "docker.list_containers": handle_docker_list_containers,
+    "docker.run": handle_docker_run,
+    "docker.stop": handle_docker_stop,
+    "docker.logs": handle_docker_logs,
+    "database.postgres_query": handle_database_postgres_query,
+    "database.postgres_execute": handle_database_postgres_execute,
+    "database.sqlite_query": handle_database_sqlite_query,
+    "database.sqlite_execute": handle_database_sqlite_execute,
+    "database.redis_get": handle_database_redis_get,
+    "database.redis_set": handle_database_redis_set,
+    "docker.build": handle_docker_build,
+    "docker.compose": handle_docker_compose,
 }
 
 ALL_TOOL_DEFINITIONS = (
-    FILE_TOOLS + SHELL_TOOLS + GIT_TOOLS + WEB_TOOLS + PROCESS_TOOLS + SEARCH_TOOLS
+    CODE_TOOLS + DATABASE_TOOLS + DOCKER_TOOLS + FILE_TOOLS + SHELL_TOOLS + GIT_TOOLS + WEB_TOOLS + PROCESS_TOOLS + SEARCH_TOOLS
 )
 
 
