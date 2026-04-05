@@ -5,7 +5,7 @@ All tests mock Playwright — no real browser is needed.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -30,11 +30,15 @@ def _reset_browser_state():
     """Reset module-level browser state before and after every test."""
     browser_tools._browser = None
     browser_tools._context = None
+    browser_tools._playwright_instance = None
     browser_tools._pages.clear()
+    browser_tools.MAX_PAGES = 5
     yield
     browser_tools._browser = None
     browser_tools._context = None
+    browser_tools._playwright_instance = None
     browser_tools._pages.clear()
+    browser_tools.MAX_PAGES = 5
 
 
 def _make_mock_page() -> AsyncMock:
@@ -216,9 +220,16 @@ class TestBrowserNavigate:
         mock_pw_cm = AsyncMock()
         mock_pw_cm.start = AsyncMock(return_value=mock_pw_instance)
 
-        with patch(
-            "max.tools.native.browser_tools.async_playwright",
-            return_value=mock_pw_cm,
+        mock_settings = MagicMock()
+        mock_settings.browser_headless = True
+        mock_settings.browser_max_pages = 5
+
+        with (
+            patch(
+                "max.tools.native.browser_tools.async_playwright",
+                return_value=mock_pw_cm,
+            ),
+            patch("max.config.Settings", return_value=mock_settings),
         ):
             result = await handle_browser_navigate({"url": "https://example.com"})
 
@@ -439,13 +450,18 @@ class TestCloseBrowser:
     async def test_close_browser_cleans_up(self):
         mock_page = _setup_browser_with_page("pg1")
         mock_browser = browser_tools._browser
+        mock_pw_instance = AsyncMock()
+        mock_pw_instance.stop = AsyncMock()
+        browser_tools._playwright_instance = mock_pw_instance
 
         await close_browser()
 
         mock_page.close.assert_called_once()
         mock_browser.close.assert_called_once()
+        mock_pw_instance.stop.assert_called_once()
         assert browser_tools._browser is None
         assert browser_tools._context is None
+        assert browser_tools._playwright_instance is None
         assert len(browser_tools._pages) == 0
 
     @pytest.mark.asyncio
@@ -453,6 +469,7 @@ class TestCloseBrowser:
         """close_browser should not raise if no browser is running."""
         await close_browser()
         assert browser_tools._browser is None
+        assert browser_tools._playwright_instance is None
 
 
 # ── Ensure browser ───────────────────────────────────────────────────
@@ -475,9 +492,16 @@ class TestEnsureBrowser:
         mock_pw_cm = AsyncMock()
         mock_pw_cm.start = AsyncMock(return_value=mock_pw_instance)
 
-        with patch(
-            "max.tools.native.browser_tools.async_playwright",
-            return_value=mock_pw_cm,
+        mock_settings = MagicMock()
+        mock_settings.browser_headless = True
+        mock_settings.browser_max_pages = 5
+
+        with (
+            patch(
+                "max.tools.native.browser_tools.async_playwright",
+                return_value=mock_pw_cm,
+            ),
+            patch("max.config.Settings", return_value=mock_settings),
         ):
             # First navigate creates the browser
             await handle_browser_navigate({"url": "https://a.com", "page_id": "pg1"})

@@ -157,25 +157,27 @@ TOOL_DEFINITIONS = [
 ]
 
 
-def _check_docker() -> None:
-    """Raise RuntimeError if docker library is not available."""
+def _check_docker() -> dict[str, Any] | None:
+    """Return error dict if docker library is not available, None otherwise."""
     if not HAS_DOCKER:
-        raise RuntimeError(
-            "Docker Python library is not installed. Install it with: pip install docker"
-        )
+        return {
+            "error": "Docker Python library is not installed. Install it with: pip install docker"
+        }
+    return None
 
 
 def _get_client() -> Any:
     """Create a Docker client from environment."""
-    _check_docker()
     return docker.from_env()
 
 
 async def handle_docker_list_containers(inputs: dict[str, Any]) -> dict[str, Any]:
     """List Docker containers."""
-    _check_docker()
+    err = _check_docker()
+    if err:
+        return err
     show_all = inputs.get("all", False)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     client = await loop.run_in_executor(None, _get_client)
     try:
         containers_raw = await loop.run_in_executor(
@@ -198,7 +200,9 @@ async def handle_docker_list_containers(inputs: dict[str, Any]) -> dict[str, Any
 
 async def handle_docker_run(inputs: dict[str, Any]) -> dict[str, Any]:
     """Run a Docker container."""
-    _check_docker()
+    err = _check_docker()
+    if err:
+        return err
     image = inputs["image"]
     command = inputs.get("command")
     name = inputs.get("name")
@@ -206,7 +210,7 @@ async def handle_docker_run(inputs: dict[str, Any]) -> dict[str, Any]:
     ports = inputs.get("ports")
     environment = inputs.get("environment")
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     client = await loop.run_in_executor(None, _get_client)
     try:
         kwargs: dict[str, Any] = {
@@ -233,10 +237,12 @@ async def handle_docker_run(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_docker_stop(inputs: dict[str, Any]) -> dict[str, Any]:
     """Stop a Docker container."""
-    _check_docker()
+    err = _check_docker()
+    if err:
+        return err
     container_id = inputs["container_id"]
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     client = await loop.run_in_executor(None, _get_client)
     try:
         container = await loop.run_in_executor(None, lambda: client.containers.get(container_id))
@@ -248,11 +254,13 @@ async def handle_docker_stop(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_docker_logs(inputs: dict[str, Any]) -> dict[str, Any]:
     """Get container logs."""
-    _check_docker()
+    err = _check_docker()
+    if err:
+        return err
     container_id = inputs["container_id"]
     tail = inputs.get("tail", 100)
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     client = await loop.run_in_executor(None, _get_client)
     try:
         container = await loop.run_in_executor(None, lambda: client.containers.get(container_id))
@@ -266,11 +274,13 @@ async def handle_docker_logs(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_docker_build(inputs: dict[str, Any]) -> dict[str, Any]:
     """Build a Docker image."""
-    _check_docker()
+    err = _check_docker()
+    if err:
+        return err
     path = inputs["path"]
     tag = inputs["tag"]
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     client = await loop.run_in_executor(None, _get_client)
     try:
         image, _build_logs = await loop.run_in_executor(

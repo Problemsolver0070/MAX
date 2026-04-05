@@ -488,29 +488,34 @@ class TestMissingDockerDependency:
     @pytest.mark.asyncio
     async def test_list_containers_no_docker(self):
         with patch("max.tools.native.docker_tools.HAS_DOCKER", False):
-            with pytest.raises(RuntimeError, match="Docker Python library is not installed"):
-                await handle_docker_list_containers({})
+            result = await handle_docker_list_containers({})
+            assert "error" in result
+            assert "Docker Python library is not installed" in result["error"]
 
     @pytest.mark.asyncio
     async def test_run_no_docker(self):
         with patch("max.tools.native.docker_tools.HAS_DOCKER", False):
-            with pytest.raises(RuntimeError, match="Docker Python library is not installed"):
-                await handle_docker_run({"image": "ubuntu"})
+            result = await handle_docker_run({"image": "ubuntu"})
+            assert "error" in result
+            assert "Docker Python library is not installed" in result["error"]
 
     @pytest.mark.asyncio
     async def test_stop_no_docker(self):
         with patch("max.tools.native.docker_tools.HAS_DOCKER", False):
-            with pytest.raises(RuntimeError, match="Docker Python library is not installed"):
-                await handle_docker_stop({"container_id": "abc"})
+            result = await handle_docker_stop({"container_id": "abc"})
+            assert "error" in result
+            assert "Docker Python library is not installed" in result["error"]
 
     @pytest.mark.asyncio
     async def test_logs_no_docker(self):
         with patch("max.tools.native.docker_tools.HAS_DOCKER", False):
-            with pytest.raises(RuntimeError, match="Docker Python library is not installed"):
-                await handle_docker_logs({"container_id": "abc"})
+            result = await handle_docker_logs({"container_id": "abc"})
+            assert "error" in result
+            assert "Docker Python library is not installed" in result["error"]
 
     @pytest.mark.asyncio
     async def test_build_no_docker(self):
         with patch("max.tools.native.docker_tools.HAS_DOCKER", False):
-            with pytest.raises(RuntimeError, match="Docker Python library is not installed"):
-                await handle_docker_build({"path": "/app", "tag": "test:v1"})
+            result = await handle_docker_build({"path": "/app", "tag": "test:v1"})
+            assert "error" in result
+            assert "Docker Python library is not installed" in result["error"]

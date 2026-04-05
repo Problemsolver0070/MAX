@@ -188,15 +188,16 @@ TOOL_DEFINITIONS = [
 ]
 
 
-def _check_boto3() -> None:
-    """Raise RuntimeError if boto3 is not installed."""
+def _check_boto3() -> dict[str, Any] | None:
+    """Return error dict if boto3 is not installed, None otherwise."""
     if not HAS_BOTO3:
-        raise RuntimeError("boto3 is required for AWS tools. Install with: pip install boto3")
+        return {"error": "boto3 is required for AWS tools. Install with: pip install boto3"}
+    return None
 
 
 async def _run_sync(fn: Any, *args: Any, **kwargs: Any) -> Any:
     """Run a synchronous function in the default executor."""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     import functools
 
     call = functools.partial(fn, *args, **kwargs)
@@ -208,7 +209,9 @@ async def _run_sync(fn: Any, *args: Any, **kwargs: Any) -> Any:
 
 async def handle_aws_s3_list(inputs: dict[str, Any]) -> dict[str, Any]:
     """List S3 buckets or objects in a bucket."""
-    _check_boto3()
+    err = _check_boto3()
+    if err:
+        return err
     client = boto3.client("s3")
     bucket = inputs.get("bucket")
 
@@ -239,7 +242,9 @@ async def handle_aws_s3_list(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_aws_s3_get(inputs: dict[str, Any]) -> dict[str, Any]:
     """Download an S3 object."""
-    _check_boto3()
+    err = _check_boto3()
+    if err:
+        return err
     client = boto3.client("s3")
     bucket = inputs["bucket"]
     key = inputs["key"]
@@ -261,7 +266,9 @@ async def handle_aws_s3_get(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_aws_s3_put(inputs: dict[str, Any]) -> dict[str, Any]:
     """Upload content to S3."""
-    _check_boto3()
+    err = _check_boto3()
+    if err:
+        return err
     client = boto3.client("s3")
     bucket = inputs["bucket"]
     key = inputs["key"]
@@ -280,7 +287,9 @@ async def handle_aws_s3_put(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_aws_s3_delete(inputs: dict[str, Any]) -> dict[str, Any]:
     """Delete an S3 object."""
-    _check_boto3()
+    err = _check_boto3()
+    if err:
+        return err
     client = boto3.client("s3")
     bucket = inputs["bucket"]
     key = inputs["key"]
@@ -294,7 +303,9 @@ async def handle_aws_s3_delete(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_aws_ec2_list(inputs: dict[str, Any]) -> dict[str, Any]:
     """List EC2 instances."""
-    _check_boto3()
+    err = _check_boto3()
+    if err:
+        return err
     client = boto3.client("ec2")
 
     kwargs: dict[str, Any] = {}
@@ -330,7 +341,9 @@ async def handle_aws_ec2_list(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_aws_ec2_manage(inputs: dict[str, Any]) -> dict[str, Any]:
     """Start, stop, or reboot EC2 instances."""
-    _check_boto3()
+    err = _check_boto3()
+    if err:
+        return err
     client = boto3.client("ec2")
     instance_ids = inputs["instance_ids"]
     action = inputs["action"]
@@ -342,7 +355,7 @@ async def handle_aws_ec2_manage(inputs: dict[str, Any]) -> dict[str, Any]:
     elif action == "reboot":
         await _run_sync(client.reboot_instances, InstanceIds=instance_ids)
     else:
-        raise ValueError(f"Invalid action: {action}. Must be start, stop, or reboot.")
+        return {"error": f"Invalid action: {action}. Must be start, stop, or reboot."}
 
     return {"action": action, "instance_ids": instance_ids}
 
@@ -352,7 +365,9 @@ async def handle_aws_ec2_manage(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_aws_lambda_invoke(inputs: dict[str, Any]) -> dict[str, Any]:
     """Invoke an AWS Lambda function."""
-    _check_boto3()
+    err = _check_boto3()
+    if err:
+        return err
     client = boto3.client("lambda")
     function_name = inputs["function_name"]
     payload = inputs.get("payload")
@@ -386,7 +401,9 @@ async def handle_aws_lambda_invoke(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_aws_cloudwatch_query(inputs: dict[str, Any]) -> dict[str, Any]:
     """Query CloudWatch Logs."""
-    _check_boto3()
+    err = _check_boto3()
+    if err:
+        return err
     client = boto3.client("logs")
     log_group = inputs["log_group"]
     limit = inputs.get("limit", 100)

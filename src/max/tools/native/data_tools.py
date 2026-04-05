@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import operator
 from pathlib import Path
 from typing import Any
@@ -237,17 +238,22 @@ async def handle_data_load(inputs: dict[str, Any]) -> dict[str, Any]:
         return _missing_dep_error()
 
     path = inputs["path"]
-    try:
-        fmt = _detect_format(path, inputs.get("format"))
+    explicit_fmt = inputs.get("format")
+
+    def _load() -> dict[str, Any]:
+        fmt = _detect_format(path, explicit_fmt)
         df = _read_file(path, fmt)
+        return {
+            "columns": df.columns,
+            "row_count": len(df),
+            "preview": df.head(10).to_dicts(),
+        }
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _load)
     except Exception as exc:
         return {"error": str(exc)}
-
-    return {
-        "columns": df.columns,
-        "row_count": len(df),
-        "preview": df.head(10).to_dicts(),
-    }
 
 
 async def handle_data_query(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -257,19 +263,23 @@ async def handle_data_query(inputs: dict[str, Any]) -> dict[str, Any]:
 
     path = inputs["path"]
     query = inputs["query"]
-    try:
+
+    def _query() -> dict[str, Any]:
         fmt = _detect_format(path)
         df = _read_file(path, fmt)
         ctx = pl.SQLContext(data=df)
         result_df = ctx.execute(query).collect()
+        return {
+            "columns": result_df.columns,
+            "rows": result_df.to_dicts(),
+            "row_count": len(result_df),
+        }
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _query)
     except Exception as exc:
         return {"error": str(exc)}
-
-    return {
-        "columns": result_df.columns,
-        "rows": result_df.to_dicts(),
-        "row_count": len(result_df),
-    }
 
 
 async def handle_data_summarize(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -278,23 +288,28 @@ async def handle_data_summarize(inputs: dict[str, Any]) -> dict[str, Any]:
         return _missing_dep_error()
 
     path = inputs["path"]
-    try:
+
+    def _summarize() -> dict[str, Any]:
         fmt = _detect_format(path)
         df = _read_file(path, fmt)
         desc = df.describe()
+
+        # Convert describe() output to {column_name: {statistic: value, ...}} format.
+        # describe() returns a DataFrame with a "statistic" column and one column per
+        # original column.
+        stat_col = desc.get_column("statistic").to_list()
+        columns: dict[str, dict[str, Any]] = {}
+        for col_name in df.columns:
+            col_values = desc.get_column(col_name).to_list()
+            columns[col_name] = dict(zip(stat_col, col_values))
+
+        return {"columns": columns}
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _summarize)
     except Exception as exc:
         return {"error": str(exc)}
-
-    # Convert describe() output to {column_name: {statistic: value, ...}} format.
-    # describe() returns a DataFrame with a "statistic" column and one column per
-    # original column.
-    stat_col = desc.get_column("statistic").to_list()
-    columns: dict[str, dict[str, Any]] = {}
-    for col_name in df.columns:
-        col_values = desc.get_column(col_name).to_list()
-        columns[col_name] = dict(zip(stat_col, col_values))
-
-    return {"columns": columns}
 
 
 async def handle_data_transform(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -304,7 +319,8 @@ async def handle_data_transform(inputs: dict[str, Any]) -> dict[str, Any]:
 
     path = inputs["path"]
     operations = inputs["operations"]
-    try:
+
+    def _transform() -> dict[str, Any]:
         fmt = _detect_format(path)
         df = _read_file(path, fmt)
 
@@ -340,14 +356,17 @@ async def handle_data_transform(inputs: dict[str, Any]) -> dict[str, Any]:
             else:
                 return {"error": f"Unknown operation: {op_type}"}
 
+        return {
+            "columns": df.columns,
+            "rows": df.to_dicts(),
+            "row_count": len(df),
+        }
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _transform)
     except Exception as exc:
         return {"error": str(exc)}
-
-    return {
-        "columns": df.columns,
-        "rows": df.to_dicts(),
-        "row_count": len(df),
-    }
 
 
 async def handle_data_export(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -357,15 +376,20 @@ async def handle_data_export(inputs: dict[str, Any]) -> dict[str, Any]:
 
     input_path = inputs["input_path"]
     output_path = inputs["output_path"]
-    try:
+    explicit_fmt = inputs.get("format")
+
+    def _export() -> dict[str, Any]:
         in_fmt = _detect_format(input_path)
-        out_fmt = _detect_format(output_path, inputs.get("format"))
+        out_fmt = _detect_format(output_path, explicit_fmt)
         df = _read_file(input_path, in_fmt)
         _write_file(df, output_path, out_fmt)
+        return {
+            "path": output_path,
+            "row_count": len(df),
+        }
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, _export)
     except Exception as exc:
         return {"error": str(exc)}
-
-    return {
-        "path": output_path,
-        "row_count": len(df),
-    }

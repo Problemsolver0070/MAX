@@ -170,47 +170,53 @@ def _parse_page_range(pages_str: str, total_pages: int) -> list[int]:
 
 async def handle_document_read_pdf(inputs: dict[str, Any]) -> dict[str, Any]:
     """Extract text from a PDF file."""
-    if not HAS_PYPDF2:
-        raise RuntimeError("PyPDF2 is not installed. Install with: pip install 'max[documents]'")
+    try:
+        if not HAS_PYPDF2:
+            return {"error": "PyPDF2 is not installed. Install with: pip install 'max[documents]'"}
 
-    path = Path(inputs["path"])
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {path}")
+        path = Path(inputs["path"])
+        if not path.exists():
+            return {"error": f"File not found: {path}"}
 
-    reader = PdfReader(str(path))
-    total_pages = len(reader.pages)
+        reader = PdfReader(str(path))
+        total_pages = len(reader.pages)
 
-    if "pages" in inputs and inputs["pages"]:
-        page_indices = _parse_page_range(inputs["pages"], total_pages)
-    else:
-        page_indices = list(range(total_pages))
+        if "pages" in inputs and inputs["pages"]:
+            page_indices = _parse_page_range(inputs["pages"], total_pages)
+        else:
+            page_indices = list(range(total_pages))
 
-    text_parts: list[str] = []
-    for idx in page_indices:
-        page_text = reader.pages[idx].extract_text() or ""
-        text_parts.append(page_text)
+        text_parts: list[str] = []
+        for idx in page_indices:
+            page_text = reader.pages[idx].extract_text() or ""
+            text_parts.append(page_text)
 
-    return {
-        "text": "\n".join(text_parts),
-        "page_count": total_pages,
-        "pages_read": len(page_indices),
-    }
+        return {
+            "text": "\n".join(text_parts),
+            "page_count": total_pages,
+            "pages_read": len(page_indices),
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 async def handle_document_read_spreadsheet(inputs: dict[str, Any]) -> dict[str, Any]:
     """Read an Excel or CSV file to JSON rows."""
-    path = Path(inputs["path"])
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {path}")
+    try:
+        path = Path(inputs["path"])
+        if not path.exists():
+            return {"error": f"File not found: {path}"}
 
-    suffix = path.suffix.lower()
+        suffix = path.suffix.lower()
 
-    if suffix == ".csv":
-        return _read_csv(path)
-    elif suffix in {".xlsx", ".xls"}:
-        return _read_excel(path, inputs.get("sheet"))
-    else:
-        raise ValueError(f"Unsupported file format: {suffix}. Use .csv, .xlsx, or .xls")
+        if suffix == ".csv":
+            return _read_csv(path)
+        elif suffix in {".xlsx", ".xls"}:
+            return _read_excel(path, inputs.get("sheet"))
+        else:
+            return {"error": f"Unsupported file format: {suffix}. Use .csv, .xlsx, or .xls"}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def _read_csv(path: Path) -> dict[str, Any]:
@@ -225,7 +231,7 @@ def _read_csv(path: Path) -> dict[str, Any]:
 def _read_excel(path: Path, sheet_name: str | None = None) -> dict[str, Any]:
     """Read an Excel file and return rows as dicts."""
     if not HAS_OPENPYXL:
-        raise RuntimeError("openpyxl is not installed. Install with: pip install 'max[documents]'")
+        return {"error": "openpyxl is not installed. Install with: pip install 'max[documents]'"}
 
     wb = load_workbook(str(path), read_only=True, data_only=True)
     if sheet_name:
@@ -253,77 +259,89 @@ def _read_excel(path: Path, sheet_name: str | None = None) -> dict[str, Any]:
 
 async def handle_document_write_csv(inputs: dict[str, Any]) -> dict[str, Any]:
     """Write data rows to a CSV file."""
-    path = Path(inputs["path"])
-    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path = Path(inputs["path"])
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-    rows: list[dict[str, Any]] = inputs["rows"]
-    if not rows:
-        path.write_text("", encoding="utf-8")
-        return {"rows_written": 0, "path": str(path)}
+        rows: list[dict[str, Any]] = inputs["rows"]
+        if not rows:
+            path.write_text("", encoding="utf-8")
+            return {"rows_written": 0, "path": str(path)}
 
-    columns = inputs.get("columns") or list(rows[0].keys())
+        columns = inputs.get("columns") or list(rows[0].keys())
 
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=columns, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(rows)
 
-    return {"rows_written": len(rows), "path": str(path)}
+        return {"rows_written": len(rows), "path": str(path)}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 async def handle_document_write_spreadsheet(inputs: dict[str, Any]) -> dict[str, Any]:
     """Write data rows to an Excel file."""
-    if not HAS_OPENPYXL:
-        raise RuntimeError("openpyxl is not installed. Install with: pip install 'max[documents]'")
+    try:
+        if not HAS_OPENPYXL:
+            return {
+                "error": "openpyxl is not installed. Install with: pip install 'max[documents]'"
+            }
 
-    path = Path(inputs["path"])
-    path.parent.mkdir(parents=True, exist_ok=True)
+        path = Path(inputs["path"])
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-    rows: list[dict[str, Any]] = inputs["rows"]
-    sheet_name = inputs.get("sheet", "Sheet")
+        rows: list[dict[str, Any]] = inputs["rows"]
+        sheet_name = inputs.get("sheet", "Sheet")
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = sheet_name
+        wb = Workbook()
+        ws = wb.active
+        ws.title = sheet_name
 
-    if not rows:
+        if not rows:
+            wb.save(str(path))
+            wb.close()
+            return {"rows_written": 0, "path": str(path)}
+
+        columns = inputs.get("columns") or list(rows[0].keys())
+
+        # Write header
+        for col_idx, col_name in enumerate(columns, 1):
+            ws.cell(row=1, column=col_idx, value=col_name)
+
+        # Write data rows
+        for row_idx, row_data in enumerate(rows, 2):
+            for col_idx, col_name in enumerate(columns, 1):
+                ws.cell(row=row_idx, column=col_idx, value=row_data.get(col_name))
+
         wb.save(str(path))
         wb.close()
-        return {"rows_written": 0, "path": str(path)}
-
-    columns = inputs.get("columns") or list(rows[0].keys())
-
-    # Write header
-    for col_idx, col_name in enumerate(columns, 1):
-        ws.cell(row=1, column=col_idx, value=col_name)
-
-    # Write data rows
-    for row_idx, row_data in enumerate(rows, 2):
-        for col_idx, col_name in enumerate(columns, 1):
-            ws.cell(row=row_idx, column=col_idx, value=row_data.get(col_name))
-
-    wb.save(str(path))
-    wb.close()
-    return {"rows_written": len(rows), "path": str(path)}
+        return {"rows_written": len(rows), "path": str(path)}
+    except Exception as e:
+        return {"error": str(e)}
 
 
 async def handle_document_parse_json(inputs: dict[str, Any]) -> dict[str, Any]:
     """Parse a JSON file and optionally apply a JSONPath query."""
-    path = Path(inputs["path"])
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {path}")
+    try:
+        path = Path(inputs["path"])
+        if not path.exists():
+            return {"error": f"File not found: {path}"}
 
-    text = path.read_text(encoding="utf-8")
-    data = json.loads(text)
+        text = path.read_text(encoding="utf-8")
+        data = json.loads(text)
 
-    query = inputs.get("query")
-    if query:
-        if not HAS_JSONPATH:
-            raise RuntimeError(
-                "jsonpath-ng is not installed. Install with: pip install 'max[documents]'"
-            )
-        expr = jsonpath_parse(query)
-        matches = expr.find(data)
-        return {"results": [m.value for m in matches]}
+        query = inputs.get("query")
+        if query:
+            if not HAS_JSONPATH:
+                return {
+                    "error": "jsonpath-ng is not installed. "
+                    "Install with: pip install 'max[documents]'"
+                }
+            expr = jsonpath_parse(query)
+            matches = expr.find(data)
+            return {"results": [m.value for m in matches]}
 
-    return {"data": data}
+        return {"data": data}
+    except Exception as e:
+        return {"error": str(e)}

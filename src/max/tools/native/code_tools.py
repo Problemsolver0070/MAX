@@ -83,6 +83,9 @@ TOOL_DEFINITIONS = [
 ]
 
 
+MAX_OUTPUT = 50_000  # 50 KB cap for subprocess output
+
+
 async def _run_cmd(cmd: list[str]) -> dict[str, Any]:
     """Run a subprocess command and return stdout, stderr, exit_code."""
     proc = await asyncio.create_subprocess_exec(
@@ -92,8 +95,8 @@ async def _run_cmd(cmd: list[str]) -> dict[str, Any]:
     )
     stdout, stderr = await proc.communicate()
     return {
-        "stdout": stdout.decode(errors="replace"),
-        "stderr": stderr.decode(errors="replace"),
+        "stdout": stdout.decode(errors="replace")[:MAX_OUTPUT],
+        "stderr": stderr.decode(errors="replace")[:MAX_OUTPUT],
         "exit_code": proc.returncode or 0,
     }
 

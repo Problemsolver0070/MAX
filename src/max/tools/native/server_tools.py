@@ -91,12 +91,11 @@ TOOL_DEFINITIONS = [
 ]
 
 
-def _check_asyncssh() -> None:
-    """Raise RuntimeError if asyncssh library is not available."""
+def _check_asyncssh() -> dict[str, Any] | None:
+    """Return error dict if asyncssh library is not available, None otherwise."""
     if not HAS_ASYNCSSH:
-        raise RuntimeError(
-            "asyncssh library is not installed. Install it with: pip install asyncssh"
-        )
+        return {"error": "asyncssh library is not installed. Install it with: pip install asyncssh"}
+    return None
 
 
 async def handle_server_system_info(inputs: dict[str, Any]) -> dict[str, Any]:
@@ -127,7 +126,9 @@ async def handle_server_system_info(inputs: dict[str, Any]) -> dict[str, Any]:
 
 async def handle_server_ssh_execute(inputs: dict[str, Any]) -> dict[str, Any]:
     """Execute a command on a remote host via SSH."""
-    _check_asyncssh()
+    err = _check_asyncssh()
+    if err:
+        return err
 
     host = inputs["host"]
     command = inputs["command"]
