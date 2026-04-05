@@ -105,9 +105,7 @@ class MCPToolProvider(ToolProvider):
             duration_ms = int((time.monotonic() - start) * 1000)
 
             if result.isError:
-                error_text = " ".join(
-                    c.text for c in result.content if hasattr(c, "text")
-                )
+                error_text = " ".join(c.text for c in result.content if hasattr(c, "text"))
                 return ToolResult(
                     tool_id=tool_id,
                     success=False,

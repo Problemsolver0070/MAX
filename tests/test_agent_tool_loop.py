@@ -1,14 +1,13 @@
 """Tests for BaseAgent.think_with_tools() — agent tool loop."""
 
-import json
 from unittest.mock import AsyncMock
 
 import pytest
 
 from max.agents.base import AgentConfig, BaseAgent
-from max.llm.models import LLMResponse, ModelType, ToolCall
+from max.llm.models import LLMResponse, ToolCall
 from max.tools.executor import ToolExecutor
-from max.tools.models import AgentToolPolicy, ToolResult
+from max.tools.models import AgentToolPolicy
 from max.tools.providers.native import NativeToolProvider
 from max.tools.registry import ToolDefinition, ToolRegistry
 
@@ -131,9 +130,7 @@ class TestThinkWithToolsMaxTurns:
             output_tokens=5,
             model="claude-opus-4-6",
             stop_reason="tool_use",
-            tool_calls=[
-                ToolCall(id="call_1", name="file.read", input={"path": "/tmp/test"})
-            ],
+            tool_calls=[ToolCall(id="call_1", name="file.read", input={"path": "/tmp/test"})],
         )
         llm.complete = AsyncMock(return_value=tool_response)
 

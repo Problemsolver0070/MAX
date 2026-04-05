@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import glob as glob_mod
-import os
 from pathlib import Path
 from typing import Any
 
@@ -158,11 +156,13 @@ async def handle_directory_list(inputs: dict[str, Any]) -> dict[str, Any]:
     entries = []
     for entry in sorted(path.iterdir()):
         stat = entry.stat()
-        entries.append({
-            "name": entry.name,
-            "type": "directory" if entry.is_dir() else "file",
-            "size": stat.st_size if entry.is_file() else 0,
-        })
+        entries.append(
+            {
+                "name": entry.name,
+                "type": "directory" if entry.is_dir() else "file",
+                "size": stat.st_size if entry.is_file() else 0,
+            }
+        )
     return {"entries": entries}
 
 

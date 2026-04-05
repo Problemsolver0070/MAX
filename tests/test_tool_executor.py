@@ -1,12 +1,11 @@
 """Tests for ToolExecutor pipeline."""
 
-import uuid
 from unittest.mock import AsyncMock
 
 import pytest
 
 from max.tools.executor import ToolExecutor
-from max.tools.models import AgentToolPolicy, ToolResult
+from max.tools.models import AgentToolPolicy
 from max.tools.providers.native import NativeToolProvider
 from max.tools.registry import ToolDefinition, ToolRegistry
 
@@ -34,6 +33,7 @@ def _make_executor():
 
     async def slow_handler(inputs):
         import asyncio
+
         await asyncio.sleep(999)
         return "done"
 

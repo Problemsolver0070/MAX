@@ -1,6 +1,6 @@
 """Tests for MCPToolProvider."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -23,9 +23,7 @@ class TestMCPToolProvider:
         mock_tool.inputSchema = {"type": "object", "properties": {"arg": {"type": "string"}}}
 
         provider._session = AsyncMock()
-        provider._session.list_tools = AsyncMock(
-            return_value=MagicMock(tools=[mock_tool])
-        )
+        provider._session.list_tools = AsyncMock(return_value=MagicMock(tools=[mock_tool]))
         provider._connected = True
 
         tools = await provider.list_tools()

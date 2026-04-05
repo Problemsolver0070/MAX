@@ -46,8 +46,7 @@ class ToolInvocationStore:
     async def get_invocations(self, tool_id: str, limit: int = 50) -> list[dict[str, Any]]:
         """Get recent invocations for a tool."""
         return await self._db.fetchall(
-            "SELECT * FROM tool_invocations WHERE tool_id = $1 "
-            "ORDER BY created_at DESC LIMIT $2",
+            "SELECT * FROM tool_invocations WHERE tool_id = $1 ORDER BY created_at DESC LIMIT $2",
             tool_id,
             limit,
         )
@@ -55,8 +54,7 @@ class ToolInvocationStore:
     async def get_agent_invocations(self, agent_id: str, limit: int = 50) -> list[dict[str, Any]]:
         """Get recent invocations by an agent."""
         return await self._db.fetchall(
-            "SELECT * FROM tool_invocations WHERE agent_id = $1 "
-            "ORDER BY created_at DESC LIMIT $2",
+            "SELECT * FROM tool_invocations WHERE agent_id = $1 ORDER BY created_at DESC LIMIT $2",
             agent_id,
             limit,
         )
