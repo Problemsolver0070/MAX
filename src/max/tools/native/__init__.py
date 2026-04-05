@@ -138,6 +138,18 @@ from max.tools.native.web_tools import (
     handle_http_fetch,
     handle_http_request,
 )
+from max.tools.native.browser_tools import (
+    TOOL_DEFINITIONS as BROWSER_TOOLS,
+)
+from max.tools.native.browser_tools import (
+    handle_browser_click,
+    handle_browser_evaluate,
+    handle_browser_fill_form,
+    handle_browser_get_content,
+    handle_browser_navigate,
+    handle_browser_screenshot,
+    handle_browser_type,
+)
 from max.tools.providers.native import NativeToolProvider
 
 _HANDLER_MAP = {
@@ -199,10 +211,18 @@ _HANDLER_MAP = {
     "calendar.create_event": handle_calendar_create_event,
     "calendar.update_event": handle_calendar_update_event,
     "calendar.delete_event": handle_calendar_delete_event,
+    "browser.navigate": handle_browser_navigate,
+    "browser.click": handle_browser_click,
+    "browser.type": handle_browser_type,
+    "browser.screenshot": handle_browser_screenshot,
+    "browser.get_content": handle_browser_get_content,
+    "browser.fill_form": handle_browser_fill_form,
+    "browser.evaluate": handle_browser_evaluate,
 }
 
 ALL_TOOL_DEFINITIONS = (
-    CALENDAR_TOOLS
+    BROWSER_TOOLS
+    + CALENDAR_TOOLS
     + CODE_TOOLS
     + DATA_TOOLS
     + DATABASE_TOOLS
