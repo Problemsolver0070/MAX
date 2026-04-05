@@ -10,6 +10,7 @@ async def db():
     database = Database(dsn="postgresql://max:max_dev_password@localhost:5432/max")
     await database.connect()
     # Drop old tables so schema changes (FK, new tables) take effect
+    await database.execute("DROP TABLE IF EXISTS tool_invocations CASCADE")
     await database.execute("DROP TABLE IF EXISTS conversation_messages CASCADE")
     await database.execute("DROP TABLE IF EXISTS graph_edges CASCADE")
     await database.execute("DROP TABLE IF EXISTS graph_nodes CASCADE")
@@ -29,6 +30,7 @@ async def db():
     await database.init_schema()
     yield database
     # Clean test data in FK-safe order
+    await database.execute("DELETE FROM tool_invocations")
     await database.execute("DELETE FROM conversation_messages")
     await database.execute("DELETE FROM graph_edges")
     await database.execute("DELETE FROM graph_nodes")
@@ -408,3 +410,11 @@ async def test_audit_reports_has_phase5_columns(db):
     col_names = {row["column_name"] for row in cols}
     expected = {"fix_instructions", "strengths", "fix_attempt"}
     assert expected.issubset(col_names), f"Missing columns: {expected - col_names}"
+
+
+@pytest.mark.asyncio
+async def test_tool_invocations_table_exists(db):
+    """Verify Phase 6A tool_invocations table is created."""
+    tables = await db.fetchall("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+    table_names = {row["tablename"] for row in tables}
+    assert "tool_invocations" in table_names
