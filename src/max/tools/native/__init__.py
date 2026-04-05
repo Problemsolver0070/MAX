@@ -5,6 +5,15 @@ Call ``register_all_native_tools(provider)`` to register every built-in tool.
 
 from __future__ import annotations
 
+from max.tools.native.calendar_tools import (
+    TOOL_DEFINITIONS as CALENDAR_TOOLS,
+)
+from max.tools.native.calendar_tools import (
+    handle_calendar_create_event,
+    handle_calendar_delete_event,
+    handle_calendar_list_events,
+    handle_calendar_update_event,
+)
 from max.tools.native.code_tools import (
     TOOL_DEFINITIONS as CODE_TOOLS,
 )
@@ -14,6 +23,16 @@ from max.tools.native.code_tools import (
     handle_code_format,
     handle_code_lint,
     handle_code_test,
+)
+from max.tools.native.data_tools import (
+    TOOL_DEFINITIONS as DATA_TOOLS,
+)
+from max.tools.native.data_tools import (
+    handle_data_export,
+    handle_data_load,
+    handle_data_query,
+    handle_data_summarize,
+    handle_data_transform,
 )
 from max.tools.native.database_tools import (
     TOOL_DEFINITIONS as DATABASE_TOOLS,
@@ -171,10 +190,21 @@ _HANDLER_MAP = {
     "media.image_info": handle_media_image_info,
     "media.audio_transcribe": handle_media_audio_transcribe,
     "media.video_info": handle_media_video_info,
+    "data.load": handle_data_load,
+    "data.query": handle_data_query,
+    "data.summarize": handle_data_summarize,
+    "data.transform": handle_data_transform,
+    "data.export": handle_data_export,
+    "calendar.list_events": handle_calendar_list_events,
+    "calendar.create_event": handle_calendar_create_event,
+    "calendar.update_event": handle_calendar_update_event,
+    "calendar.delete_event": handle_calendar_delete_event,
 }
 
 ALL_TOOL_DEFINITIONS = (
-    CODE_TOOLS
+    CALENDAR_TOOLS
+    + CODE_TOOLS
+    + DATA_TOOLS
     + DATABASE_TOOLS
     + DOCKER_TOOLS
     + DOCUMENT_TOOLS
