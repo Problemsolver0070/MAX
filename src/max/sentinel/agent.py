@@ -41,9 +41,7 @@ class SentinelAgent:
         await self._bus.unsubscribe("sentinel.run_request", self._on_run_request)
         logger.info("SentinelAgent stopped")
 
-    async def _on_run_request(
-        self, channel: str, data: dict[str, Any]
-    ) -> None:
+    async def _on_run_request(self, channel: str, data: dict[str, Any]) -> None:
         """Handle a sentinel run request from the bus."""
         try:
             exp_id_str = data.get("experiment_id")

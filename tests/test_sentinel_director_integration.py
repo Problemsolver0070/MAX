@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from max.evolution.director import EvolutionDirectorAgent
-from max.evolution.models import EvolutionProposal, ChangeSet, ChangeSetEntry
+from max.evolution.models import ChangeSet, ChangeSetEntry, EvolutionProposal
 from max.sentinel.models import SentinelVerdict
 
 
@@ -28,13 +28,15 @@ def mock_sentinel_scorer():
     scorer = AsyncMock()
     scorer.run_baseline = AsyncMock(return_value=uuid.uuid4())
     scorer.run_candidate = AsyncMock(return_value=uuid.uuid4())
-    scorer.compare_and_verdict = AsyncMock(return_value=SentinelVerdict(
-        experiment_id=uuid.uuid4(),
-        baseline_run_id=uuid.uuid4(),
-        candidate_run_id=uuid.uuid4(),
-        passed=True,
-        summary="All passed",
-    ))
+    scorer.compare_and_verdict = AsyncMock(
+        return_value=SentinelVerdict(
+            experiment_id=uuid.uuid4(),
+            baseline_run_id=uuid.uuid4(),
+            candidate_run_id=uuid.uuid4(),
+            passed=True,
+            summary="All passed",
+        )
+    )
     return scorer
 
 
@@ -57,10 +59,12 @@ def director(mock_settings, mock_sentinel_scorer):
     snapshot_manager.capture = AsyncMock(return_value=uuid.uuid4())
     snapshot_manager.restore = AsyncMock()
     improver = AsyncMock()
-    improver.implement = AsyncMock(return_value=ChangeSet(
-        proposal_id=uuid.uuid4(),
-        entries=[ChangeSetEntry(target_type="prompt", target_id="test", new_value="new")],
-    ))
+    improver.implement = AsyncMock(
+        return_value=ChangeSet(
+            proposal_id=uuid.uuid4(),
+            entries=[ChangeSetEntry(target_type="prompt", target_id="test", new_value="new")],
+        )
+    )
     canary_runner = AsyncMock()
     self_model = AsyncMock()
     self_model.record_evolution = AsyncMock()
@@ -163,7 +167,7 @@ class TestPipelineUsesSentinel:
 
 class TestSentinelScorerProperty:
     def test_has_sentinel_scorer_attribute(self, director):
-        assert hasattr(director, '_sentinel_scorer')
+        assert hasattr(director, "_sentinel_scorer")
 
 
 # ── Task 10: Gap Fixes ────────────────────────────────────────────────
@@ -184,9 +188,11 @@ class TestConsecutiveDropsPersistence:
         bus = AsyncMock()
         bus.subscribe = AsyncMock()
         evo_store = AsyncMock()
-        evo_store.get_journal = AsyncMock(return_value=[
-            {"action": "freeze", "details": {"reason": "test", "consecutive_drops": 3}},
-        ])
+        evo_store.get_journal = AsyncMock(
+            return_value=[
+                {"action": "freeze", "details": {"reason": "test", "consecutive_drops": 3}},
+            ]
+        )
         quality_store = AsyncMock()
         snapshot_manager = AsyncMock()
         improver = AsyncMock()
@@ -198,10 +204,17 @@ class TestConsecutiveDropsPersistence:
         task_store = AsyncMock()
 
         d = EvolutionDirectorAgent(
-            llm=llm, bus=bus, evo_store=evo_store, quality_store=quality_store,
-            snapshot_manager=snapshot_manager, improver=improver,
-            canary_runner=canary_runner, self_model=self_model,
-            settings=settings, state_manager=state_manager, task_store=task_store,
+            llm=llm,
+            bus=bus,
+            evo_store=evo_store,
+            quality_store=quality_store,
+            snapshot_manager=snapshot_manager,
+            improver=improver,
+            canary_runner=canary_runner,
+            self_model=self_model,
+            settings=settings,
+            state_manager=state_manager,
+            task_store=task_store,
         )
         await d.load_persisted_state()
         assert d._frozen is True

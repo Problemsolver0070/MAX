@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -30,27 +30,38 @@ def mock_store():
 @pytest.fixture
 def mock_runner():
     runner = AsyncMock()
-    runner.run_benchmark = AsyncMock(return_value={
-        "score": 0.9, "criteria_scores": [], "reasoning": "Good",
-    })
+    runner.run_benchmark = AsyncMock(
+        return_value={
+            "score": 0.9,
+            "criteria_scores": [],
+            "reasoning": "Good",
+        }
+    )
     runner.get_replay_tasks = AsyncMock(return_value=[])
-    runner.run_replay = AsyncMock(return_value={
-        "score": 0.88, "criteria_scores": [], "reasoning": "Ok",
-    })
+    runner.run_replay = AsyncMock(
+        return_value={
+            "score": 0.88,
+            "criteria_scores": [],
+            "reasoning": "Ok",
+        }
+    )
     return runner
 
 
 @pytest.fixture
 def mock_comparator():
     from max.sentinel.models import SentinelVerdict
+
     comparator = MagicMock()
-    comparator.compare = MagicMock(return_value=SentinelVerdict(
-        experiment_id=uuid.uuid4(),
-        baseline_run_id=uuid.uuid4(),
-        candidate_run_id=uuid.uuid4(),
-        passed=True,
-        summary="All passed",
-    ))
+    comparator.compare = MagicMock(
+        return_value=SentinelVerdict(
+            experiment_id=uuid.uuid4(),
+            baseline_run_id=uuid.uuid4(),
+            candidate_run_id=uuid.uuid4(),
+            passed=True,
+            summary="All passed",
+        )
+    )
     return comparator
 
 
@@ -75,10 +86,20 @@ class TestRunBaseline:
     @pytest.mark.asyncio
     async def test_runs_all_benchmarks(self, scorer, mock_store, mock_runner):
         mock_store.get_benchmarks.return_value = [
-            {"id": uuid.uuid4(), "name": "b1", "category": "planning",
-             "scenario": {}, "evaluation_criteria": []},
-            {"id": uuid.uuid4(), "name": "b2", "category": "security",
-             "scenario": {}, "evaluation_criteria": []},
+            {
+                "id": uuid.uuid4(),
+                "name": "b1",
+                "category": "planning",
+                "scenario": {},
+                "evaluation_criteria": [],
+            },
+            {
+                "id": uuid.uuid4(),
+                "name": "b2",
+                "category": "security",
+                "scenario": {},
+                "evaluation_criteria": [],
+            },
         ]
         await scorer.run_baseline(uuid.uuid4())
         assert mock_runner.run_benchmark.call_count == 2
@@ -87,8 +108,13 @@ class TestRunBaseline:
     async def test_records_scores(self, scorer, mock_store, mock_runner):
         bid = uuid.uuid4()
         mock_store.get_benchmarks.return_value = [
-            {"id": bid, "name": "b1", "category": "planning",
-             "scenario": {}, "evaluation_criteria": []},
+            {
+                "id": bid,
+                "name": "b1",
+                "category": "planning",
+                "scenario": {},
+                "evaluation_criteria": [],
+            },
         ]
         await scorer.run_baseline(uuid.uuid4())
         mock_store.record_score.assert_called()
@@ -97,8 +123,14 @@ class TestRunBaseline:
     async def test_records_capability_scores(self, scorer, mock_store):
         bid = uuid.uuid4()
         mock_store.get_benchmarks.return_value = [
-            {"id": bid, "name": "b1", "category": "planning",
-             "scenario": {}, "evaluation_criteria": [], "weight": 1.0},
+            {
+                "id": bid,
+                "name": "b1",
+                "category": "planning",
+                "scenario": {},
+                "evaluation_criteria": [],
+                "weight": 1.0,
+            },
         ]
         await scorer.run_baseline(uuid.uuid4())
         mock_store.record_capability_score.assert_called()
@@ -124,7 +156,12 @@ class TestCompareAndVerdict:
     @pytest.mark.asyncio
     async def test_returns_verdict(self, scorer, mock_store, mock_comparator):
         mock_store.get_scores.return_value = [
-            {"benchmark_id": uuid.uuid4(), "score": 0.9, "benchmark_name": "t1", "category": "planning"}
+            {
+                "benchmark_id": uuid.uuid4(),
+                "score": 0.9,
+                "benchmark_name": "t1",
+                "category": "planning",
+            }
         ]
         mock_store.get_capability_scores.return_value = [
             {"capability": "planning", "aggregate_score": 0.9, "test_count": 1}
@@ -141,6 +178,7 @@ class TestCompareAndVerdict:
     @pytest.mark.asyncio
     async def test_records_reverts_on_failure(self, scorer, mock_store, mock_comparator):
         from max.sentinel.models import SentinelVerdict, TestRegression
+
         failing_verdict = SentinelVerdict(
             experiment_id=uuid.uuid4(),
             baseline_run_id=uuid.uuid4(),

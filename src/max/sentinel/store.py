@@ -65,22 +65,16 @@ class SentinelStore:
                     category,
                 )
             return await self._db.fetchall(
-                "SELECT * FROM sentinel_benchmarks "
-                "WHERE category = $1 ORDER BY category, name",
+                "SELECT * FROM sentinel_benchmarks WHERE category = $1 ORDER BY category, name",
                 category,
             )
         if active_only:
             return await self._db.fetchall(
-                "SELECT * FROM sentinel_benchmarks "
-                "WHERE active = TRUE ORDER BY category, name"
+                "SELECT * FROM sentinel_benchmarks WHERE active = TRUE ORDER BY category, name"
             )
-        return await self._db.fetchall(
-            "SELECT * FROM sentinel_benchmarks ORDER BY category, name"
-        )
+        return await self._db.fetchall("SELECT * FROM sentinel_benchmarks ORDER BY category, name")
 
-    async def get_benchmark(
-        self, benchmark_id: uuid.UUID
-    ) -> dict[str, Any] | None:
+    async def get_benchmark(self, benchmark_id: uuid.UUID) -> dict[str, Any] | None:
         """Get a single benchmark by ID."""
         return await self._db.fetchone(
             "SELECT * FROM sentinel_benchmarks WHERE id = $1",
@@ -107,21 +101,15 @@ class SentinelStore:
         )
         return run_id
 
-    async def complete_test_run(
-        self, run_id: uuid.UUID, status: str
-    ) -> None:
+    async def complete_test_run(self, run_id: uuid.UUID, status: str) -> None:
         """Mark a test run as completed or failed."""
         await self._db.execute(
-            "UPDATE sentinel_test_runs "
-            "SET status = $1, completed_at = NOW() "
-            "WHERE id = $2",
+            "UPDATE sentinel_test_runs SET status = $1, completed_at = NOW() WHERE id = $2",
             status,
             run_id,
         )
 
-    async def get_test_run(
-        self, run_id: uuid.UUID
-    ) -> dict[str, Any] | None:
+    async def get_test_run(self, run_id: uuid.UUID) -> dict[str, Any] | None:
         """Get a single test run by ID."""
         return await self._db.fetchone(
             "SELECT * FROM sentinel_test_runs WHERE id = $1",
@@ -150,8 +138,7 @@ class SentinelStore:
                 limit,
             )
         return await self._db.fetchall(
-            "SELECT * FROM sentinel_test_runs "
-            "ORDER BY started_at DESC LIMIT $1",
+            "SELECT * FROM sentinel_test_runs ORDER BY started_at DESC LIMIT $1",
             limit,
         )
 
@@ -171,9 +158,7 @@ class SentinelStore:
             score.get("reasoning", ""),
         )
 
-    async def get_scores(
-        self, run_id: uuid.UUID
-    ) -> list[dict[str, Any]]:
+    async def get_scores(self, run_id: uuid.UUID) -> list[dict[str, Any]]:
         """Get all scores for a test run."""
         return await self._db.fetchall(
             "SELECT s.*, b.name AS benchmark_name, b.category "
@@ -185,9 +170,7 @@ class SentinelStore:
 
     # ── Capability Scores ─────────────────────────────────────────────
 
-    async def record_capability_score(
-        self, cap: dict[str, Any]
-    ) -> None:
+    async def record_capability_score(self, cap: dict[str, Any]) -> None:
         """Record an aggregated capability score."""
         await self._db.execute(
             "INSERT INTO sentinel_capability_scores "
@@ -200,13 +183,10 @@ class SentinelStore:
             cap["test_count"],
         )
 
-    async def get_capability_scores(
-        self, run_id: uuid.UUID
-    ) -> list[dict[str, Any]]:
+    async def get_capability_scores(self, run_id: uuid.UUID) -> list[dict[str, Any]]:
         """Get capability aggregate scores for a test run."""
         return await self._db.fetchall(
-            "SELECT * FROM sentinel_capability_scores "
-            "WHERE run_id = $1 ORDER BY capability",
+            "SELECT * FROM sentinel_capability_scores WHERE run_id = $1 ORDER BY capability",
             run_id,
         )
 
@@ -229,9 +209,7 @@ class SentinelStore:
             verdict.get("summary", ""),
         )
 
-    async def get_verdict(
-        self, experiment_id: uuid.UUID
-    ) -> dict[str, Any] | None:
+    async def get_verdict(self, experiment_id: uuid.UUID) -> dict[str, Any] | None:
         """Get the verdict for an experiment."""
         return await self._db.fetchone(
             "SELECT * FROM sentinel_verdicts WHERE experiment_id = $1",
@@ -260,25 +238,19 @@ class SentinelStore:
             entry["reason_detail"],
         )
 
-    async def get_reverts(
-        self, experiment_id: uuid.UUID
-    ) -> list[dict[str, Any]]:
+    async def get_reverts(self, experiment_id: uuid.UUID) -> list[dict[str, Any]]:
         """Get all revert log entries for an experiment."""
         return await self._db.fetchall(
-            "SELECT * FROM sentinel_revert_log "
-            "WHERE experiment_id = $1 ORDER BY logged_at DESC",
+            "SELECT * FROM sentinel_revert_log WHERE experiment_id = $1 ORDER BY logged_at DESC",
             experiment_id,
         )
 
     # ── Quality Ledger ────────────────────────────────────────────────
 
-    async def record_to_ledger(
-        self, entry_type: str, content: dict[str, Any]
-    ) -> None:
+    async def record_to_ledger(self, entry_type: str, content: dict[str, Any]) -> None:
         """Write an entry to the quality_ledger table."""
         await self._db.execute(
-            "INSERT INTO quality_ledger (id, entry_type, content) "
-            "VALUES ($1, $2, $3::jsonb)",
+            "INSERT INTO quality_ledger (id, entry_type, content) VALUES ($1, $2, $3::jsonb)",
             uuid.uuid4(),
             entry_type,
             json.dumps(content),

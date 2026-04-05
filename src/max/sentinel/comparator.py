@@ -34,21 +34,14 @@ class ScoreComparator:
         - No individual test score dropped
         - No capability aggregate dropped
         """
-        test_regressions = self._check_test_regressions(
-            baseline_scores, candidate_scores
-        )
+        test_regressions = self._check_test_regressions(baseline_scores, candidate_scores)
         capability_regressions = self._check_capability_regressions(
             baseline_capabilities, candidate_capabilities
         )
 
-        passed = (
-            len(test_regressions) == 0
-            and len(capability_regressions) == 0
-        )
+        passed = len(test_regressions) == 0 and len(capability_regressions) == 0
 
-        summary = self._build_summary(
-            passed, test_regressions, capability_regressions
-        )
+        summary = self._build_summary(passed, test_regressions, capability_regressions)
 
         return SentinelVerdict(
             experiment_id=experiment_id,
@@ -118,9 +111,7 @@ class ScoreComparator:
         candidate_caps: list[dict[str, Any]],
     ) -> list[CapabilityRegression]:
         """Check for per-capability aggregate regressions."""
-        candidate_map: dict[str, dict[str, Any]] = {
-            c["capability"]: c for c in candidate_caps
-        }
+        candidate_map: dict[str, dict[str, Any]] = {c["capability"]: c for c in candidate_caps}
 
         regressions: list[CapabilityRegression] = []
         for bc in baseline_caps:
@@ -167,12 +158,8 @@ class ScoreComparator:
         parts: list[str] = []
         if test_regs:
             names = [r.benchmark_name for r in test_regs]
-            parts.append(
-                f"{len(test_regs)} test(s) dropped: {', '.join(names)}"
-            )
+            parts.append(f"{len(test_regs)} test(s) dropped: {', '.join(names)}")
         if cap_regs:
             caps = [r.capability for r in cap_regs]
-            parts.append(
-                f"{len(cap_regs)} capability(ies) dropped: {', '.join(caps)}"
-            )
+            parts.append(f"{len(cap_regs)} capability(ies) dropped: {', '.join(caps)}")
         return "REVERT — " + "; ".join(parts)

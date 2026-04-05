@@ -57,13 +57,17 @@ class TestRunBenchmark:
         # LLM returns agent response, then judge response
         mock_llm.complete.side_effect = [
             MagicMock(text="PostgreSQL 15 is our database."),
-            MagicMock(text=json.dumps({
-                "criteria_scores": [
-                    {"criterion": "c1", "score": 0.9, "reasoning": "Good"},
-                ],
-                "overall_score": 0.9,
-                "overall_reasoning": "Accurate",
-            })),
+            MagicMock(
+                text=json.dumps(
+                    {
+                        "criteria_scores": [
+                            {"criterion": "c1", "score": 0.9, "reasoning": "Good"},
+                        ],
+                        "overall_score": 0.9,
+                        "overall_reasoning": "Accurate",
+                    }
+                )
+            ),
         ]
         benchmark = {
             "id": uuid.uuid4(),
@@ -99,11 +103,15 @@ class TestRunReplay:
         mock_quality_store.get_audit_reports.return_value = [
             {"score": 0.85, "subtask_id": uuid.uuid4()}
         ]
-        mock_llm.complete.return_value = MagicMock(text=json.dumps({
-            "criteria_scores": [{"criterion": "quality", "score": 0.88, "reasoning": "ok"}],
-            "overall_score": 0.88,
-            "overall_reasoning": "Good work",
-        }))
+        mock_llm.complete.return_value = MagicMock(
+            text=json.dumps(
+                {
+                    "criteria_scores": [{"criterion": "quality", "score": 0.88, "reasoning": "ok"}],
+                    "overall_score": 0.88,
+                    "overall_reasoning": "Good work",
+                }
+            )
+        )
         task = {"id": uuid.uuid4(), "goal_anchor": "Test task"}
         subtasks = [{"id": uuid.uuid4(), "description": "Do thing", "result": {"output": "Done"}}]
         score = await runner.run_replay(task, subtasks)
@@ -143,16 +151,20 @@ class TestGetReplayTasks:
 
 class TestParseJudgeResponse:
     def test_parses_valid_json(self, runner):
-        text = json.dumps({
-            "criteria_scores": [{"criterion": "a", "score": 0.9}],
-            "overall_score": 0.9,
-            "overall_reasoning": "Good",
-        })
+        text = json.dumps(
+            {
+                "criteria_scores": [{"criterion": "a", "score": 0.9}],
+                "overall_score": 0.9,
+                "overall_reasoning": "Good",
+            }
+        )
         result = runner._parse_judge_response(text)
         assert result["overall_score"] == 0.9
 
     def test_parses_fenced_json(self, runner):
-        text = '```json\n{"criteria_scores": [], "overall_score": 0.8, "overall_reasoning": "ok"}\n```'
+        text = (
+            '```json\n{"criteria_scores": [], "overall_score": 0.8, "overall_reasoning": "ok"}\n```'
+        )
         result = runner._parse_judge_response(text)
         assert result["overall_score"] == 0.8
 

@@ -7,7 +7,6 @@ import uuid
 import pytest
 
 from max.sentinel.comparator import ScoreComparator
-from max.sentinel.models import SentinelVerdict
 
 
 @pytest.fixture

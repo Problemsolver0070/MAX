@@ -40,6 +40,8 @@ class Benchmark(BaseModel):
 class TestRun(BaseModel):
     """A single execution of the Sentinel test suite."""
 
+    __test__ = False
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     experiment_id: uuid.UUID | None = None
     run_type: str
@@ -50,6 +52,8 @@ class TestRun(BaseModel):
 
 class TestScore(BaseModel):
     """Score for a single benchmark within a test run."""
+
+    __test__ = False
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     run_id: uuid.UUID
@@ -76,6 +80,8 @@ class CapabilityScore(BaseModel):
 
 class TestRegression(BaseModel):
     """A regression detected in a single test case."""
+
+    __test__ = False
 
     benchmark_id: uuid.UUID
     benchmark_name: str
