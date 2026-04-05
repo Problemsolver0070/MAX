@@ -78,9 +78,9 @@ class EvolutionProposal(BaseModel):
     description: str
     target_type: str
     target_id: str | None = None
-    impact_score: float = 0.0
-    effort_score: float = 0.0
-    risk_score: float = 0.0
+    impact_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    effort_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    risk_score: float = Field(default=0.0, ge=0.0, le=1.0)
     priority: float = 0.0
     status: str = "proposed"
     experiment_id: uuid.UUID | None = None
