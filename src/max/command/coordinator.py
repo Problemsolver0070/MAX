@@ -181,6 +181,19 @@ class CoordinatorAgent(BaseAgent):
             return
 
         intent_id = uuid_mod.UUID(intent_data["id"])
+
+        # Persist intent row so the tasks FK constraint is satisfied
+        await self._db.execute(
+            "INSERT INTO intents (id, user_message, source_platform, goal_anchor, priority, attachments) "
+            "VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING",
+            intent_id,
+            intent_data.get("user_message", ""),
+            intent_data.get("source_platform", "unknown"),
+            action.goal_anchor or intent_data.get("goal_anchor", ""),
+            (action.priority.value if action.priority else "normal"),
+            "[]",
+        )
+
         task = await self._task_store.create_task(
             intent_id=intent_id,
             goal_anchor=action.goal_anchor or intent_data.get("goal_anchor", ""),
