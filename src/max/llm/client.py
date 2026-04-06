@@ -17,11 +17,18 @@ class LLMClient:
     def __init__(
         self,
         api_key: str,
+        base_url: str = "",
         default_model: ModelType = ModelType.OPUS,
         max_retries: int = 3,
         circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
-        self._client = AsyncAnthropic(api_key=api_key, max_retries=max_retries)
+        client_kwargs: dict[str, Any] = {
+            "api_key": api_key,
+            "max_retries": max_retries,
+        }
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        self._client = AsyncAnthropic(**client_kwargs)
         self.default_model = default_model
         self.total_input_tokens: int = 0
         self.total_output_tokens: int = 0

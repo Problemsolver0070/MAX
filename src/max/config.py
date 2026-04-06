@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str
+    anthropic_base_url: str = ""
 
     # PostgreSQL
     postgres_host: str = "localhost"
