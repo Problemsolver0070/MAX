@@ -58,7 +58,11 @@ class LLMClient:
             kwargs["tools"] = tools
 
         try:
-            response = await self._client.messages.create(**kwargs)
+            # Use streaming to avoid Anthropic SDK 10-minute timeout on
+            # non-streaming requests.  We collect the full response here so
+            # callers still get a simple LLMResponse back.
+            async with self._client.messages.stream(**kwargs) as stream:
+                response = await stream.get_final_message()
         except anthropic.RateLimitError as exc:
             logger.warning("Rate limited by Anthropic API: %s", exc)
             if self._circuit_breaker is not None:
