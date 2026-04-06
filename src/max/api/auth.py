@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hmac
+
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -23,7 +25,11 @@ async def verify_api_key(
     if not valid_keys:
         raise HTTPException(status_code=503, detail="No API keys configured")
 
-    if not credentials.credentials or credentials.credentials not in valid_keys:
+    matched = any(
+        hmac.compare_digest(credentials.credentials, k)
+        for k in valid_keys
+    )
+    if not credentials.credentials or not matched:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     return credentials.credentials
