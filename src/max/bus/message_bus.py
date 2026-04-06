@@ -175,7 +175,7 @@ class MessageBus:
                     channel = msg["channel"]
                     data = msg["data"]
                     stream_id = msg["stream_id"]
-                    retry_count = msg.get("_retry_count", 0)
+                    retry_count = data.get("_retry_count", 0)
 
                     handlers = self._handlers.get(channel, [])
                     success = True
@@ -204,8 +204,8 @@ class MessageBus:
                     else:
                         # NACK: ack original, re-publish with incremented retry
                         await self._transport.ack(channel, stream_id)
-                        data["_retry_count"] = retry_count + 1
-                        await self._transport.publish(channel, data)
+                        retry_data = {**data, "_retry_count": retry_count + 1}
+                        await self._transport.publish(channel, retry_data)
 
             except asyncio.CancelledError:
                 break

@@ -272,10 +272,9 @@ class TestStreamListenLoop:
             [
                 {
                     "channel": "ch",
-                    "data": {"x": 1},
+                    "data": {"x": 1, "_retry_count": 3},
                     "stream_id": "1-0",
                     "message_id": "abc",
-                    "_retry_count": 3,
                 }
             ],
             [],
@@ -300,10 +299,9 @@ class TestStreamListenLoop:
             [
                 {
                     "channel": "ch",
-                    "data": {"x": 1},
+                    "data": {"x": 1, "_retry_count": 1},
                     "stream_id": "2-0",
                     "message_id": "def",
-                    "_retry_count": 1,
                 }
             ],
             [],
