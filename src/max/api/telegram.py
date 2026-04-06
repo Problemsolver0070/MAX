@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import uuid
 from typing import Any
 
@@ -24,7 +25,7 @@ async def telegram_webhook(request: Request) -> dict:
     # Verify secret token
     secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
     expected = state.settings.comm_webhook_secret
-    if not expected or secret != expected:
+    if not expected or not hmac.compare_digest(secret, expected):
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
     body: dict[str, Any] = await request.json()

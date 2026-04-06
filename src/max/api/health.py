@@ -36,7 +36,7 @@ async def health(request: Request) -> dict:
 
     return {
         "status": "ok",
-        "uptime_seconds": round(time.time() - state.start_time, 1),
+        "uptime_seconds": round(time.monotonic() - state.start_time, 1),
         "agents": agent_statuses,
         "infrastructure": {
             "database": db_status,
