@@ -51,7 +51,8 @@ class CircuitBreaker:
     @property
     def failure_count(self) -> int:
         """Current consecutive failure count."""
-        return self._failure_count
+        with self._lock:
+            return self._failure_count
 
     @property
     def state(self) -> CircuitState:
@@ -78,19 +79,24 @@ class CircuitBreaker:
 
     def check(self) -> None:
         """Check if a request is allowed. Raises CircuitBreakerOpen if not."""
-        state = self.state
-        if state == CircuitState.CLOSED:
-            return
-        if state == CircuitState.HALF_OPEN:
-            with self._lock:
-                if self._half_open_allowed:
-                    self._half_open_allowed = False
-                    return
+        with self._lock:
+            # Inline the OPEN->HALF_OPEN transition check
+            if (
+                self._state == CircuitState.OPEN
+                and time.monotonic() - self._opened_at >= self.cooldown_seconds
+            ):
+                self._state = CircuitState.HALF_OPEN
+                self._half_open_allowed = True
+                logger.info("Circuit breaker transitioned to HALF_OPEN")
+
+            if self._state == CircuitState.CLOSED:
+                return
+            if self._state == CircuitState.HALF_OPEN and self._half_open_allowed:
+                self._half_open_allowed = False
+                return
+
             remaining = self.cooldown_seconds - (time.monotonic() - self._opened_at)
             raise CircuitBreakerOpen(retry_after=max(0.0, remaining))
-        # OPEN
-        remaining = self.cooldown_seconds - (time.monotonic() - self._opened_at)
-        raise CircuitBreakerOpen(retry_after=max(0.0, remaining))
 
     def record_success(self) -> None:
         """Record a successful call. Resets failure count, closes circuit."""
