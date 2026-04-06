@@ -190,3 +190,12 @@ class TaskStore:
             arts,
         )
         return result_id
+
+    async def get_completed_tasks(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Get recently completed tasks, ordered by completion time descending."""
+        rows = await self._db.fetchall(
+            "SELECT * FROM tasks WHERE status = 'completed' "
+            "ORDER BY completed_at DESC LIMIT $1",
+            limit,
+        )
+        return [_parse_jsonb(r, _TASK_JSON_FIELDS) for r in rows]

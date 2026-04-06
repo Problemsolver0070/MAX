@@ -6,6 +6,7 @@ import json
 import logging
 import uuid as uuid_mod
 from datetime import UTC, datetime
+from typing import Any
 
 from max.db.postgres import Database
 from max.db.redis_store import WarmMemory
@@ -67,3 +68,17 @@ class CoordinatorStateManager:
             json.dumps(raw),
         )
         logger.info("Coordinator state backed up to cold storage")
+
+    async def update_evolution_state(self, data: dict[str, Any]) -> None:
+        """Merge evolution state fields into the coordinator state document.
+
+        Args:
+            data: Key-value pairs to merge into the ``evolution`` sub-document.
+        """
+        state = await self.load()
+        current = state.model_dump(mode="json")
+        evo = current.get("evolution") or {}
+        evo.update(data)
+        current["evolution"] = evo
+        updated = CoordinatorState.model_validate(current)
+        await self.save(updated)
