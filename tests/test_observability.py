@@ -129,3 +129,51 @@ class TestConfigureLogging:
         # Cleanup
         for h in json_handlers:
             root.removeHandler(h)
+
+
+from max.observability import MetricsRegistry, configure_metrics
+
+
+class TestMetricsRegistry:
+    def test_creates_counter(self):
+        registry = MetricsRegistry()
+        counter = registry.counter("test.counter", "A test counter")
+        assert counter is not None
+
+    def test_creates_histogram(self):
+        registry = MetricsRegistry()
+        histogram = registry.histogram("test.histogram", "A test histogram")
+        assert histogram is not None
+
+    def test_creates_gauge(self):
+        registry = MetricsRegistry()
+        gauge = registry.gauge("test.gauge", "A test gauge")
+        assert gauge is not None
+
+    def test_same_name_returns_same_instrument(self):
+        registry = MetricsRegistry()
+        c1 = registry.counter("test.dup", "counter")
+        c2 = registry.counter("test.dup", "counter")
+        assert c1 is c2
+
+    def test_counter_add(self):
+        registry = MetricsRegistry()
+        counter = registry.counter("test.add", "counter")
+        counter.add(1)  # should not raise
+
+    def test_histogram_record(self):
+        registry = MetricsRegistry()
+        histogram = registry.histogram("test.record", "histogram")
+        histogram.record(1.5)  # should not raise
+
+
+class TestConfigureMetrics:
+    def test_returns_registry(self):
+        registry = configure_metrics(service_name="test-max", enabled=True)
+        assert isinstance(registry, MetricsRegistry)
+
+    def test_disabled_returns_noop_registry(self):
+        registry = configure_metrics(service_name="test-max", enabled=False)
+        assert isinstance(registry, MetricsRegistry)
+        counter = registry.counter("noop.counter", "noop")
+        counter.add(1)  # should not raise even when disabled

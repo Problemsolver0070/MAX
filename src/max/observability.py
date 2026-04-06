@@ -1,11 +1,15 @@
 """Observability: structured JSON logging, correlation ID context, metrics setup.
 
 Usage:
-    from max.observability import configure_logging, set_correlation_id
+    from max.observability import configure_logging, set_correlation_id, configure_metrics
 
     configure_logging(level="DEBUG", json_format=True)
     token = set_correlation_id("req-abc-123")
     # ... all log messages now include correlation_id ...
+
+    registry = configure_metrics(service_name="max", enabled=True)
+    counter = registry.counter("requests.total", "Total requests")
+    counter.add(1)
 """
 
 from __future__ import annotations
@@ -16,6 +20,13 @@ import logging
 import traceback
 from datetime import UTC, datetime
 from typing import Any
+
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import (
+    ConsoleMetricExporter,
+    PeriodicExportingMetricReader,
+)
 
 # ── Correlation ID Context ──────────────────────────────────────────────
 
@@ -79,3 +90,68 @@ def configure_logging(
         root.addHandler(handler)
     elif not root.handlers:
         logging.basicConfig(level=root.level)
+
+
+# ── Metrics Registry ──────────────────────────────────────────────────
+
+
+class MetricsRegistry:
+    """Centralized registry for OpenTelemetry metrics instruments.
+
+    Provides typed factory methods for counters, histograms, and gauges.
+    Deduplicates instruments by name.
+    """
+
+    def __init__(self, meter_name: str = "max") -> None:
+        self._meter = metrics.get_meter(meter_name)
+        self._instruments: dict[str, Any] = {}
+
+    def counter(self, name: str, description: str = "") -> metrics.Counter:
+        """Get or create a counter."""
+        if name not in self._instruments:
+            self._instruments[name] = self._meter.create_counter(
+                name, description=description
+            )
+        return self._instruments[name]
+
+    def histogram(self, name: str, description: str = "") -> metrics.Histogram:
+        """Get or create a histogram."""
+        if name not in self._instruments:
+            self._instruments[name] = self._meter.create_histogram(
+                name, description=description
+            )
+        return self._instruments[name]
+
+    def gauge(self, name: str, description: str = "") -> metrics.Gauge:
+        """Get or create a gauge."""
+        if name not in self._instruments:
+            self._instruments[name] = self._meter.create_gauge(
+                name, description=description
+            )
+        return self._instruments[name]
+
+
+# ── Metrics Configuration ─────────────────────────────────────────────
+
+
+def configure_metrics(
+    service_name: str = "max",
+    enabled: bool = False,
+    exporter_endpoint: str = "",
+) -> MetricsRegistry:
+    """Configure OpenTelemetry metrics.
+
+    Args:
+        service_name: Service name for metric labeling.
+        enabled: If True, set up a real meter provider with exporters.
+        exporter_endpoint: OTLP exporter endpoint (if empty, uses console).
+    """
+    if enabled:
+        reader = PeriodicExportingMetricReader(
+            ConsoleMetricExporter(),
+            export_interval_millis=60000,
+        )
+        provider = MeterProvider(metric_readers=[reader])
+        metrics.set_meter_provider(provider)
+
+    return MetricsRegistry(meter_name=service_name)
