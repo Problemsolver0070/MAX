@@ -32,7 +32,7 @@ def _make_state(**overrides) -> AppState:
         "tool_registry": MagicMock(),
         "tool_executor": MagicMock(),
         "agents": {"coordinator": MagicMock(), "planner": MagicMock()},
-        "start_time": time.time() - 100,
+        "start_time": time.monotonic() - 100,
     }
     defaults.update(overrides)
     return AppState(**defaults)
