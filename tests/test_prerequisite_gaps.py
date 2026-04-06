@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
+from unittest.mock import AsyncMock
 
 
 class TestCoordinatorStateManagerUpdateEvolution:
@@ -24,9 +21,7 @@ class TestCoordinatorStateManagerUpdateEvolution:
         initial = CoordinatorState(version=1)
         warm.get = AsyncMock(return_value=initial.model_dump(mode="json"))
 
-        await mgr.update_evolution_state(
-            {"evolution_frozen": True, "freeze_reason": "test freeze"}
-        )
+        await mgr.update_evolution_state({"evolution_frozen": True, "freeze_reason": "test freeze"})
 
         # Should have called save (which calls warm.set)
         warm.set.assert_called_once()
@@ -64,8 +59,18 @@ class TestTaskStoreGetCompletedTasks:
         db = AsyncMock()
         db.fetchall = AsyncMock(
             return_value=[
-                {"id": uuid.uuid4(), "goal_anchor": "task 1", "status": "completed", "quality_criteria": "{}"},
-                {"id": uuid.uuid4(), "goal_anchor": "task 2", "status": "completed", "quality_criteria": "{}"},
+                {
+                    "id": uuid.uuid4(),
+                    "goal_anchor": "task 1",
+                    "status": "completed",
+                    "quality_criteria": "{}",
+                },
+                {
+                    "id": uuid.uuid4(),
+                    "goal_anchor": "task 2",
+                    "status": "completed",
+                    "quality_criteria": "{}",
+                },
             ]
         )
         store = TaskStore(db)
@@ -93,10 +98,11 @@ class TestEvolutionDirectorStop:
         bus = AsyncMock()
         agent = EvolutionDirectorAgent.__new__(EvolutionDirectorAgent)
         agent._bus = bus
+        agent._on_trigger = AsyncMock()
+        agent._on_proposal = AsyncMock()
 
         await agent.stop()
 
         assert bus.unsubscribe.call_count == 2
-        channels = [call.args[0] for call in bus.unsubscribe.call_args_list]
-        assert "evolution.trigger" in channels
-        assert "evolution.proposal" in channels
+        bus.unsubscribe.assert_any_call("evolution.trigger", agent._on_trigger)
+        bus.unsubscribe.assert_any_call("evolution.proposal", agent._on_proposal)

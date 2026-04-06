@@ -85,8 +85,8 @@ class EvolutionDirectorAgent:
 
     async def stop(self) -> None:
         """Unsubscribe from evolution bus channels."""
-        await self._bus.unsubscribe("evolution.trigger")
-        await self._bus.unsubscribe("evolution.proposal")
+        await self._bus.unsubscribe("evolution.trigger", self._on_trigger)
+        await self._bus.unsubscribe("evolution.proposal", self._on_proposal)
         logger.info("EvolutionDirectorAgent stopped")
 
     async def load_persisted_state(self) -> None:
