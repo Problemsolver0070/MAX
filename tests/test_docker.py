@@ -31,7 +31,8 @@ class TestDockerfile:
 
     def test_uses_uv_for_deps(self) -> None:
         """Builder stage must install uv and use it for dependency installation."""
-        assert "uv" in self.dockerfile
+        assert "uv sync" in self.dockerfile
+        assert "ghcr.io/astral-sh/uv" in self.dockerfile
 
     def test_non_root_user(self) -> None:
         """Runtime stage must create and switch to a non-root user."""
@@ -47,14 +48,22 @@ class TestDockerfile:
 
     def test_entrypoint_uses_python_m_max(self) -> None:
         """Entrypoint must run python -m max."""
-        assert "python" in self.dockerfile
-        assert "-m" in self.dockerfile
-        assert "max" in self.dockerfile
+        cmd_lines = [line for line in self.lines if line.strip().startswith("CMD")]
+        assert len(cmd_lines) >= 1
+        cmd_line = cmd_lines[-1]  # Last CMD wins in Docker
+        assert "python" in cmd_line
+        assert "-m" in cmd_line
+        assert "max" in cmd_line
 
     def test_copies_source_not_tests(self) -> None:
         """Runtime stage should copy src/max but not tests."""
         second_stage = self.dockerfile.split("FROM")[2] if "FROM" in self.dockerfile else ""
         assert "src/max" in second_stage or "src/" in second_stage
+        copy_lines_stage2 = [
+            line for line in second_stage.splitlines() if line.strip().startswith("COPY")
+        ]
+        for line in copy_lines_stage2:
+            assert "tests" not in line.lower(), f"Tests should not be copied: {line}"
 
     def test_no_env_file_copied(self) -> None:
         """Never copy .env into the image — secrets come from environment."""
