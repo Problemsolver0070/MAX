@@ -6,6 +6,7 @@ from typing import Any
 import anthropic
 from anthropic import AsyncAnthropic
 
+from max.llm.circuit_breaker import CircuitBreaker, CircuitBreakerOpen
 from max.llm.errors import LLMAuthError, LLMConnectionError, LLMError, LLMRateLimitError
 from max.llm.models import LLMResponse, ModelType, ToolCall
 
@@ -18,11 +19,13 @@ class LLMClient:
         api_key: str,
         default_model: ModelType = ModelType.OPUS,
         max_retries: int = 3,
-    ):
+        circuit_breaker: CircuitBreaker | None = None,
+    ) -> None:
         self._client = AsyncAnthropic(api_key=api_key, max_retries=max_retries)
         self.default_model = default_model
-        self.total_input_tokens = 0
-        self.total_output_tokens = 0
+        self.total_input_tokens: int = 0
+        self.total_output_tokens: int = 0
+        self._circuit_breaker = circuit_breaker
 
     async def complete(
         self,
@@ -32,6 +35,10 @@ class LLMClient:
         tools: list[dict[str, Any]] | None = None,
         max_tokens: int | None = None,
     ) -> LLMResponse:
+        # Circuit breaker gate
+        if self._circuit_breaker is not None:
+            self._circuit_breaker.check()
+
         model_type = model or self.default_model
         kwargs: dict[str, Any] = {
             "model": model_type.model_id,
@@ -47,15 +54,23 @@ class LLMClient:
             response = await self._client.messages.create(**kwargs)
         except anthropic.RateLimitError as exc:
             logger.warning("Rate limited by Anthropic API: %s", exc)
+            if self._circuit_breaker is not None:
+                self._circuit_breaker.record_failure()
             raise LLMRateLimitError(str(exc), cause=exc) from exc
         except anthropic.APIConnectionError as exc:
             logger.error("Failed to connect to Anthropic API: %s", exc)
+            if self._circuit_breaker is not None:
+                self._circuit_breaker.record_failure()
             raise LLMConnectionError(str(exc), cause=exc) from exc
         except anthropic.AuthenticationError as exc:
             logger.error("Anthropic API authentication failed: %s", exc)
+            if self._circuit_breaker is not None:
+                self._circuit_breaker.record_failure()
             raise LLMAuthError(str(exc), cause=exc) from exc
         except anthropic.APIStatusError as exc:
             logger.error("Anthropic API error (status %s): %s", exc.status_code, exc)
+            if self._circuit_breaker is not None:
+                self._circuit_breaker.record_failure()
             raise LLMError(str(exc), cause=exc) from exc
 
         text_parts = []
@@ -68,6 +83,9 @@ class LLMClient:
 
         self.total_input_tokens += response.usage.input_tokens
         self.total_output_tokens += response.usage.output_tokens
+
+        if self._circuit_breaker is not None:
+            self._circuit_breaker.record_success()
 
         return LLMResponse(
             text="\n".join(text_parts),
