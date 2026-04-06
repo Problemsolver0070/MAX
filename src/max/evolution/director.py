@@ -83,6 +83,12 @@ class EvolutionDirectorAgent:
         await self._bus.subscribe("evolution.proposal", self._on_proposal)
         logger.info("EvolutionDirectorAgent started and subscribed to bus channels")
 
+    async def stop(self) -> None:
+        """Unsubscribe from evolution bus channels."""
+        await self._bus.unsubscribe("evolution.trigger")
+        await self._bus.unsubscribe("evolution.proposal")
+        logger.info("EvolutionDirectorAgent stopped")
+
     async def load_persisted_state(self) -> None:
         """Load persisted state from journal on startup."""
         entries = await self._evo_store.get_journal(limit=1)

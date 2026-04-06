@@ -1531,6 +1531,7 @@ data = [
     { name = "polars" },
 ]
 dev = [
+    { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -1575,6 +1576,7 @@ requires-dist = [
     { name = "caldav", marker = "extra == 'calendar-tools'", specifier = ">=1.4" },
     { name = "docker", marker = "extra == 'docker'", specifier = ">=7.1" },
     { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
     { name = "icalendar", marker = "extra == 'calendar-tools'", specifier = ">=6.0" },
     { name = "jsonpath-ng", marker = "extra == 'documents'", specifier = ">=1.6" },
     { name = "max", extras = ["browser", "aws", "docker", "documents", "data", "media", "email-tools", "calendar-tools", "scraping", "ssh", "openapi"], marker = "extra == 'all-tools'" },
