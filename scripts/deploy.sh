@@ -16,6 +16,11 @@
 # =============================================================================
 set -euo pipefail
 
+# ── Pre-flight checks ─────────────────────────────────────────────────────
+command -v az >/dev/null 2>&1 || { echo "ERROR: Azure CLI not found. Install from https://aka.ms/installazurecli"; exit 1; }
+command -v docker >/dev/null 2>&1 || { echo "ERROR: Docker not found."; exit 1; }
+docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon not running. Start Docker and retry."; exit 1; }
+
 # ── Configuration ─────────────────────────────────────────────────────────
 RESOURCE_GROUP="${RESOURCE_GROUP:-max-prod-rg}"
 APP_NAME="${APP_NAME:-max}"
@@ -81,16 +86,26 @@ APP_URL=$(az containerapp show \
 
 echo "Application URL: https://${APP_URL}"
 echo ""
-echo "Checking health endpoint..."
-sleep 10  # Wait for new revision to start
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${APP_URL}/health" 2>/dev/null || echo "000")
+echo "Checking health endpoint (retrying up to 60s)..."
+
+MAX_RETRIES=6
+HTTP_STATUS="000"
+for i in $(seq 1 ${MAX_RETRIES}); do
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://${APP_URL}/health" 2>/dev/null || echo "000")
+    if [ "${HTTP_STATUS}" = "200" ]; then
+        break
+    fi
+    echo "  Attempt ${i}/${MAX_RETRIES}: HTTP ${HTTP_STATUS}, waiting 10s..."
+    sleep 10
+done
 
 if [ "${HTTP_STATUS}" = "200" ]; then
     echo "Health check PASSED (HTTP 200)"
 else
-    echo "WARNING: Health check returned HTTP ${HTTP_STATUS}"
-    echo "The new revision may still be starting. Check logs with:"
+    echo "ERROR: Health check failed after ${MAX_RETRIES} attempts (HTTP ${HTTP_STATUS})"
+    echo "The deployment may have failed. Check logs with:"
     echo "  az containerapp logs show --resource-group ${RESOURCE_GROUP} --name ${CONTAINER_APP_NAME} --follow"
+    exit 1
 fi
 
 echo ""

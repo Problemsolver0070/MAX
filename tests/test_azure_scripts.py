@@ -155,3 +155,7 @@ class TestDeployScript:
     def test_verification_step(self) -> None:
         """Should verify deployment succeeded (health check or status)."""
         assert "health" in self.script.lower() or "verify" in self.script.lower()
+
+    def test_exits_on_health_check_failure(self) -> None:
+        """Script must exit non-zero if health check fails after retries."""
+        assert "exit 1" in self.script
