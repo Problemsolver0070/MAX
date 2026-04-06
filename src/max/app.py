@@ -15,6 +15,7 @@ Public API:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -73,7 +74,11 @@ def _resolve_model(model_name: str) -> ModelType:
 
     Falls back to OPUS if the string is not recognized.
     """
-    return _MODEL_MAP.get(model_name, ModelType.OPUS)
+    result = _MODEL_MAP.get(model_name)
+    if result is None:
+        logger.warning("Unknown model name '%s', falling back to OPUS", model_name)
+        return ModelType.OPUS
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -394,11 +399,14 @@ async def shutdown_app_state(state: AppState) -> None:
     """Graceful shutdown in reverse construction order.
 
     Stops scheduler first, then agents (reverse order), then infrastructure.
-    Tolerates agents that lack a stop() method or raise during shutdown.
+    Each step is wrapped with a 10-second timeout so a hung coroutine cannot
+    block the entire shutdown sequence.
     """
     # 1. Scheduler
     try:
-        await state.scheduler.stop()
+        await asyncio.wait_for(state.scheduler.stop(), timeout=10.0)
+    except TimeoutError:
+        logger.warning("Scheduler stop timed out after 10s")
     except Exception:
         logger.exception("Error stopping scheduler")
 
@@ -407,32 +415,42 @@ async def shutdown_app_state(state: AppState) -> None:
         agent = state.agents[name]
         if hasattr(agent, "stop"):
             try:
-                await agent.stop()
+                await asyncio.wait_for(agent.stop(), timeout=10.0)
                 logger.info("Stopped agent: %s", name)
+            except TimeoutError:
+                logger.warning("Agent '%s' stop timed out after 10s", name)
             except Exception:
                 logger.exception("Error stopping agent: %s", name)
 
     # 3. Message bus
     try:
-        await state.bus.close()
+        await asyncio.wait_for(state.bus.close(), timeout=10.0)
+    except TimeoutError:
+        logger.warning("Message bus close timed out after 10s")
     except Exception:
         logger.exception("Error closing message bus")
 
     # 4. LLM client
     try:
-        await state.llm.close()
+        await asyncio.wait_for(state.llm.close(), timeout=10.0)
+    except TimeoutError:
+        logger.warning("LLM client close timed out after 10s")
     except Exception:
         logger.exception("Error closing LLM client")
 
     # 5. Database
     try:
-        await state.db.close()
+        await asyncio.wait_for(state.db.close(), timeout=10.0)
+    except TimeoutError:
+        logger.warning("Database close timed out after 10s")
     except Exception:
         logger.exception("Error closing database")
 
     # 6. Redis
     try:
-        await state.redis_client.close()
+        await asyncio.wait_for(state.redis_client.close(), timeout=10.0)
+    except TimeoutError:
+        logger.warning("Redis close timed out after 10s")
     except Exception:
         logger.exception("Error closing Redis")
 
