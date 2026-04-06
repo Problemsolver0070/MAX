@@ -45,9 +45,7 @@ class TestCircuitBreakerBlocking:
         assert circuit_breaker.state == CircuitState.OPEN
 
         with pytest.raises(CircuitBreakerOpen):
-            await client_with_cb.complete(
-                messages=[{"role": "user", "content": "hello"}]
-            )
+            await client_with_cb.complete(messages=[{"role": "user", "content": "hello"}])
 
     async def test_no_api_call_when_circuit_open(self, client_with_cb, circuit_breaker):
         for _ in range(3):
@@ -55,9 +53,7 @@ class TestCircuitBreakerBlocking:
 
         with patch.object(client_with_cb._client.messages, "create") as mock_create:
             with pytest.raises(CircuitBreakerOpen):
-                await client_with_cb.complete(
-                    messages=[{"role": "user", "content": "hello"}]
-                )
+                await client_with_cb.complete(messages=[{"role": "user", "content": "hello"}])
             mock_create.assert_not_called()
 
 
@@ -76,14 +72,10 @@ class TestCircuitBreakerRecording:
             new_callable=AsyncMock,
             return_value=mock_response,
         ):
-            await client_with_cb.complete(
-                messages=[{"role": "user", "content": "hello"}]
-            )
+            await client_with_cb.complete(messages=[{"role": "user", "content": "hello"}])
         assert circuit_breaker.failure_count == 0
 
-    async def test_records_failure_on_connection_error(
-        self, client_with_cb, circuit_breaker
-    ):
+    async def test_records_failure_on_connection_error(self, client_with_cb, circuit_breaker):
         import anthropic
 
         with patch.object(
@@ -93,9 +85,7 @@ class TestCircuitBreakerRecording:
             side_effect=anthropic.APIConnectionError(request=MagicMock()),
         ):
             with pytest.raises(LLMConnectionError):
-                await client_with_cb.complete(
-                    messages=[{"role": "user", "content": "hello"}]
-                )
+                await client_with_cb.complete(messages=[{"role": "user", "content": "hello"}])
         assert circuit_breaker.failure_count == 1
 
 

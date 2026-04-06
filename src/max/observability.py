@@ -61,9 +61,7 @@ class JsonFormatter(logging.Formatter):
         }
 
         if record.exc_info and record.exc_info[0] is not None:
-            log_entry["exception"] = "".join(
-                traceback.format_exception(*record.exc_info)
-            )
+            log_entry["exception"] = "".join(traceback.format_exception(*record.exc_info))
 
         return json.dumps(log_entry, default=str)
 
@@ -109,25 +107,19 @@ class MetricsRegistry:
     def counter(self, name: str, description: str = "") -> metrics.Counter:
         """Get or create a counter."""
         if name not in self._instruments:
-            self._instruments[name] = self._meter.create_counter(
-                name, description=description
-            )
+            self._instruments[name] = self._meter.create_counter(name, description=description)
         return self._instruments[name]
 
     def histogram(self, name: str, description: str = "") -> metrics.Histogram:
         """Get or create a histogram."""
         if name not in self._instruments:
-            self._instruments[name] = self._meter.create_histogram(
-                name, description=description
-            )
+            self._instruments[name] = self._meter.create_histogram(name, description=description)
         return self._instruments[name]
 
     def gauge(self, name: str, description: str = "") -> metrics.Gauge:
         """Get or create a gauge."""
         if name not in self._instruments:
-            self._instruments[name] = self._meter.create_gauge(
-                name, description=description
-            )
+            self._instruments[name] = self._meter.create_gauge(name, description=description)
         return self._instruments[name]
 
 

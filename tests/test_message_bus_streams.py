@@ -88,24 +88,18 @@ class TestSubscribeWithStreams:
         assert "test_channel" in bus_with_streams._handlers
         assert handler in bus_with_streams._handlers["test_channel"]
 
-    async def test_subscribe_ensures_consumer_group(
-        self, bus_with_streams, mock_transport
-    ):
+    async def test_subscribe_ensures_consumer_group(self, bus_with_streams, mock_transport):
         handler = AsyncMock()
         await bus_with_streams.subscribe("test_channel", handler)
         mock_transport.ensure_group.assert_called_with("test_channel")
 
-    async def test_subscribe_does_not_use_pubsub(
-        self, bus_with_streams, mock_redis
-    ):
+    async def test_subscribe_does_not_use_pubsub(self, bus_with_streams, mock_redis):
         handler = AsyncMock()
         await bus_with_streams.subscribe("test_channel", handler)
         # Should NOT have created a pubsub subscription
         mock_redis.pubsub.return_value.subscribe.assert_not_called()
 
-    async def test_subscribe_multiple_handlers_same_channel(
-        self, bus_with_streams, mock_transport
-    ):
+    async def test_subscribe_multiple_handlers_same_channel(self, bus_with_streams, mock_transport):
         h1 = AsyncMock()
         h2 = AsyncMock()
         await bus_with_streams.subscribe("ch", h1)
@@ -134,9 +128,7 @@ class TestPublishWithStreams:
         await bus_with_streams.publish("ch", {"key": "value"})
         mock_transport.publish.assert_called_once_with("ch", {"key": "value"})
 
-    async def test_publish_does_not_use_redis_publish(
-        self, bus_with_streams, mock_redis
-    ):
+    async def test_publish_does_not_use_redis_publish(self, bus_with_streams, mock_redis):
         await bus_with_streams.publish("ch", {"key": "value"})
         mock_redis.publish.assert_not_called()
 
@@ -148,9 +140,7 @@ class TestPublishFallbackPubSub:
         await bus_with_pubsub.publish("ch", {"key": "value"})
         mock_redis.publish.assert_called_once()
 
-    async def test_publish_serializes_data_as_json(
-        self, bus_with_pubsub, mock_redis
-    ):
+    async def test_publish_serializes_data_as_json(self, bus_with_pubsub, mock_redis):
         await bus_with_pubsub.publish("ch", {"a": 1, "b": "two"})
         call_args = mock_redis.publish.call_args
         payload = call_args[0][1]
@@ -182,23 +172,17 @@ class TestUnsubscribe:
         assert h1 not in bus_with_streams._handlers["ch"]
         assert h2 in bus_with_streams._handlers["ch"]
 
-    async def test_unsubscribe_last_handler_removes_channel(
-        self, bus_with_streams
-    ):
+    async def test_unsubscribe_last_handler_removes_channel(self, bus_with_streams):
         handler = AsyncMock()
         await bus_with_streams.subscribe("ch", handler)
         await bus_with_streams.unsubscribe("ch", handler)
         assert "ch" not in bus_with_streams._handlers
 
-    async def test_unsubscribe_nonexistent_channel_is_noop(
-        self, bus_with_streams
-    ):
+    async def test_unsubscribe_nonexistent_channel_is_noop(self, bus_with_streams):
         # Should not raise
         await bus_with_streams.unsubscribe("no_such_channel")
 
-    async def test_unsubscribe_pubsub_calls_pubsub_unsubscribe(
-        self, bus_with_pubsub, mock_redis
-    ):
+    async def test_unsubscribe_pubsub_calls_pubsub_unsubscribe(self, bus_with_pubsub, mock_redis):
         handler = AsyncMock()
         await bus_with_pubsub.subscribe("ch", handler)
         await bus_with_pubsub.unsubscribe("ch")
@@ -236,9 +220,7 @@ class TestStreamListenLoop:
 
         handler.assert_called_once_with("ch", {"key": "value"})
 
-    async def test_acks_after_successful_handler(
-        self, bus_with_streams, mock_transport
-    ):
+    async def test_acks_after_successful_handler(self, bus_with_streams, mock_transport):
         handler = AsyncMock()
         await bus_with_streams.subscribe("ch", handler)
 
@@ -262,9 +244,7 @@ class TestStreamListenLoop:
 
         mock_transport.ack.assert_called_once_with("ch", "1-0")
 
-    async def test_dead_letters_after_handler_failure(
-        self, bus_with_streams, mock_transport
-    ):
+    async def test_dead_letters_after_handler_failure(self, bus_with_streams, mock_transport):
         handler = AsyncMock(side_effect=Exception("boom"))
         await bus_with_streams.subscribe("ch", handler)
 
@@ -319,9 +299,7 @@ class TestStreamListenLoop:
         republished_data = mock_transport.publish.call_args[0][1]
         assert republished_data["_retry_count"] == 2
 
-    async def test_multiple_handlers_all_called(
-        self, bus_with_streams, mock_transport
-    ):
+    async def test_multiple_handlers_all_called(self, bus_with_streams, mock_transport):
         h1 = AsyncMock()
         h2 = AsyncMock()
         await bus_with_streams.subscribe("ch", h1)
@@ -349,9 +327,7 @@ class TestStreamListenLoop:
         h2.assert_called_once_with("ch", {"v": 42})
         mock_transport.ack.assert_called_once_with("ch", "3-0")
 
-    async def test_start_listening_is_idempotent(
-        self, bus_with_streams, mock_transport
-    ):
+    async def test_start_listening_is_idempotent(self, bus_with_streams, mock_transport):
         handler = AsyncMock()
         await bus_with_streams.subscribe("ch", handler)
         mock_transport.read_messages.return_value = []
@@ -376,14 +352,9 @@ class TestCloseWithStreams:
         await bus_with_streams.start_listening()
         await asyncio.sleep(0.05)
         await bus_with_streams.close()
-        assert (
-            bus_with_streams._listen_task is None
-            or bus_with_streams._listen_task.done()
-        )
+        assert bus_with_streams._listen_task is None or bus_with_streams._listen_task.done()
 
-    async def test_close_does_not_close_pubsub_in_streams_mode(
-        self, bus_with_streams, mock_redis
-    ):
+    async def test_close_does_not_close_pubsub_in_streams_mode(self, bus_with_streams, mock_redis):
         """When using streams, there is no pubsub to close."""
         await bus_with_streams.close()
         # _pubsub should be None in streams mode
