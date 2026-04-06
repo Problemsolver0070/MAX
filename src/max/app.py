@@ -52,6 +52,7 @@ from max.observability import configure_logging, configure_metrics
 from max.quality.director import QualityDirectorAgent
 from max.quality.rules import RuleEngine
 from max.quality.store import QualityStore
+from max.recovery import recover_orphaned_tasks
 from max.scheduler import Scheduler
 from max.sentinel.agent import SentinelAgent
 from max.sentinel.benchmarks import BenchmarkRegistry
@@ -475,6 +476,11 @@ async def lifespan(app: FastAPI):
     await state.bus.start_listening()
     await start_agents(state)
     await start_scheduler_jobs(state)
+
+    if settings.task_recovery_enabled:
+        recovered = await recover_orphaned_tasks(state)
+        if recovered:
+            logger.info("Recovered %d orphaned tasks from previous run", recovered)
 
     logger.info("Max application started")
 
