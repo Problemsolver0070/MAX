@@ -6,7 +6,7 @@ from typing import Any
 import anthropic
 from anthropic import AsyncAnthropic
 
-from max.llm.circuit_breaker import CircuitBreaker, CircuitBreakerOpen
+from max.llm.circuit_breaker import CircuitBreaker
 from max.llm.errors import LLMAuthError, LLMConnectionError, LLMError, LLMRateLimitError
 from max.llm.models import LLMResponse, ModelType, ToolCall
 
