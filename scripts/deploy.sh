@@ -24,7 +24,7 @@ docker info >/dev/null 2>&1 || { echo "ERROR: Docker daemon not running. Start D
 # ── Configuration ─────────────────────────────────────────────────────────
 RESOURCE_GROUP="${RESOURCE_GROUP:-max-prod-rg}"
 APP_NAME="${APP_NAME:-max}"
-ACR_NAME="${ACR_NAME:-${APP_NAME}acr}"
+ACR_NAME="${ACR_NAME:-${APP_NAME}everactiveacr}"
 CONTAINER_APP_NAME="${CONTAINER_APP_NAME:-${APP_NAME}-app}"
 
 # Derive ACR login server
