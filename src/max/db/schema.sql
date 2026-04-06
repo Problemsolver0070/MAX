@@ -657,3 +657,19 @@ CREATE INDEX IF NOT EXISTS idx_sentinel_revert_experiment
     ON sentinel_revert_log(experiment_id);
 CREATE INDEX IF NOT EXISTS idx_sentinel_revert_capability
     ON sentinel_revert_log(capability, logged_at DESC);
+
+-- ── Scheduler ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS scheduler_state (
+    job_name         VARCHAR(100) PRIMARY KEY,
+    last_run_at      TIMESTAMPTZ,
+    next_run_at      TIMESTAMPTZ NOT NULL,
+    interval_seconds INTEGER NOT NULL CHECK (interval_seconds > 0),
+    enabled          BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_scheduler_state_next_run
+    ON scheduler_state (next_run_at)
+    WHERE enabled = TRUE;
