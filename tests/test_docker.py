@@ -153,7 +153,9 @@ class TestDockerCompose:
 
     def test_max_has_healthcheck(self) -> None:
         """max service must define a healthcheck."""
-        assert "healthcheck" in self.raw
+        # Parse from after "max:" to the next top-level service
+        max_section = self.raw.split("max:")[1].split("\n\n")[0] if "max:" in self.raw else ""
+        assert "healthcheck" in max_section
 
     def test_max_uses_build_context(self) -> None:
         """max service must use build: . to build from local Dockerfile."""

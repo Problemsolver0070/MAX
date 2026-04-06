@@ -14,12 +14,13 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=max
       - POSTGRES_USER=max
+      - POSTGRES_PASSWORD=max_dev_password
       - REDIS_URL=redis://redis:6379/0
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
-      start-period: 15s
+      start_period: 15s
       retries: 3
     restart: unless-stopped
 
