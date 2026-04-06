@@ -25,10 +25,7 @@ async def verify_api_key(
     if not valid_keys:
         raise HTTPException(status_code=503, detail="No API keys configured")
 
-    matched = any(
-        hmac.compare_digest(credentials.credentials, k)
-        for k in valid_keys
-    )
+    matched = any(hmac.compare_digest(credentials.credentials, k) for k in valid_keys)
     if not credentials.credentials or not matched:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
