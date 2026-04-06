@@ -178,3 +178,11 @@ class TestDockerCompose:
         """Named volumes pgdata and redisdata must still be defined."""
         assert "pgdata:" in self.raw
         assert "redisdata:" in self.raw
+
+    def test_env_example_exists(self) -> None:
+        """`.env.example` must exist and document required variables."""
+        env_example = PROJECT_ROOT / ".env.example"
+        assert env_example.exists(), ".env.example not found in project root"
+        content = env_example.read_text()
+        assert "ANTHROPIC_API_KEY" in content, "Missing ANTHROPIC_API_KEY"
+        assert "POSTGRES_PASSWORD" in content, "Missing POSTGRES_PASSWORD"
