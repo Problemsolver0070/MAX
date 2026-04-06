@@ -177,6 +177,45 @@ if [ -n "${REDIS_KEY}" ]; then
         --output none
 fi
 
+# Anthropic / Azure AI Foundry API key
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+    az keyvault secret set \
+        --vault-name "${KEYVAULT_NAME}" \
+        --name "anthropic-api-key" \
+        --value "${ANTHROPIC_API_KEY}" \
+        --output none
+    echo "  Stored anthropic-api-key in Key Vault."
+fi
+
+# Telegram bot token
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
+    az keyvault secret set \
+        --vault-name "${KEYVAULT_NAME}" \
+        --name "telegram-bot-token" \
+        --value "${TELEGRAM_BOT_TOKEN}" \
+        --output none
+    echo "  Stored telegram-bot-token in Key Vault."
+fi
+
+# MAX API keys for REST API auth
+if [ -n "${MAX_API_KEYS:-}" ]; then
+    az keyvault secret set \
+        --vault-name "${KEYVAULT_NAME}" \
+        --name "max-api-keys" \
+        --value "${MAX_API_KEYS}" \
+        --output none
+    echo "  Stored max-api-keys in Key Vault."
+fi
+
+# Webhook secret — auto-generate if not provided
+COMM_WEBHOOK_SECRET="${COMM_WEBHOOK_SECRET:-$(openssl rand -hex 32)}"
+az keyvault secret set \
+    --vault-name "${KEYVAULT_NAME}" \
+    --name "comm-webhook-secret" \
+    --value "${COMM_WEBHOOK_SECRET}" \
+    --output none
+echo "  Stored comm-webhook-secret in Key Vault."
+
 echo "Key Vault '${KEYVAULT_NAME}' ready with secrets stored."
 
 # ── 7. Container Apps Environment ─────────────────────────────────────────
@@ -212,6 +251,10 @@ az containerapp create \
     --secrets \
         "postgres-password=${POSTGRES_PASSWORD}" \
         "redis-url=rediss://:${REDIS_KEY}@${REDIS_HOST}:6380/0" \
+        "anthropic-api-key=${ANTHROPIC_API_KEY:-placeholder}" \
+        "telegram-bot-token=${TELEGRAM_BOT_TOKEN:-placeholder}" \
+        "max-api-keys=${MAX_API_KEYS:-placeholder}" \
+        "comm-webhook-secret=${COMM_WEBHOOK_SECRET}" \
     --env-vars \
         "POSTGRES_HOST=${POSTGRES_SERVER}.postgres.database.azure.com" \
         "POSTGRES_PORT=5432" \
@@ -219,6 +262,13 @@ az containerapp create \
         "POSTGRES_USER=${POSTGRES_USER}" \
         "POSTGRES_PASSWORD=secretref:postgres-password" \
         "REDIS_URL=secretref:redis-url" \
+        "ANTHROPIC_API_KEY=secretref:anthropic-api-key" \
+        "ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL:-}" \
+        "TELEGRAM_BOT_TOKEN=secretref:telegram-bot-token" \
+        "MAX_OWNER_TELEGRAM_ID=${MAX_OWNER_TELEGRAM_ID:-}" \
+        "MAX_API_KEYS=secretref:max-api-keys" \
+        "COMM_WEBHOOK_ENABLED=true" \
+        "COMM_WEBHOOK_SECRET=secretref:comm-webhook-secret" \
         "AZURE_KEY_VAULT_URL=https://${KEYVAULT_NAME}.vault.azure.net/" \
         "MAX_LOG_LEVEL=INFO" \
         "MAX_HOST=0.0.0.0" \
@@ -230,6 +280,16 @@ APP_URL=$(az containerapp show \
     --name "${CONTAINER_APP_NAME}" \
     --query properties.configuration.ingress.fqdn -o tsv 2>/dev/null || echo "<pending>")
 echo "Container App '${CONTAINER_APP_NAME}' ready (URL: https://${APP_URL})."
+
+# Set webhook URL from Container App FQDN
+if [ "${APP_URL}" != "<pending>" ]; then
+    az containerapp update \
+        --resource-group "${RESOURCE_GROUP}" \
+        --name "${CONTAINER_APP_NAME}" \
+        --set-env-vars "COMM_WEBHOOK_URL=https://${APP_URL}/webhook/telegram" \
+        --output none
+    echo "  Webhook URL set to https://${APP_URL}/webhook/telegram"
+fi
 
 # ── 9. Summary ────────────────────────────────────────────────────────────
 echo ""
@@ -246,10 +306,12 @@ echo "  7. Container Apps Env:   ${CONTAINER_ENV_NAME}"
 echo "  8. Container App:        ${CONTAINER_APP_NAME}"
 echo ""
 echo "Next steps:"
-echo "  1. Add remaining secrets to Key Vault:"
+echo "  1. If you haven't set environment variables before provisioning, add secrets manually:"
 echo "     az keyvault secret set --vault-name ${KEYVAULT_NAME} --name anthropic-api-key --value <your-key>"
 echo "     az keyvault secret set --vault-name ${KEYVAULT_NAME} --name telegram-bot-token --value <your-token>"
 echo "     az keyvault secret set --vault-name ${KEYVAULT_NAME} --name max-api-keys --value <comma-separated-keys>"
+echo "     Then update the Container App secrets:"
+echo "     az containerapp secret set --resource-group ${RESOURCE_GROUP} --name ${CONTAINER_APP_NAME} --secrets anthropic-api-key=<key> telegram-bot-token=<token> max-api-keys=<keys>"
 echo "  2. Build and deploy:"
 echo "     ./scripts/deploy.sh"
 echo ""
