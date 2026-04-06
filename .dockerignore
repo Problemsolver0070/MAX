@@ -1,0 +1,43 @@
+# Version control
+.git
+.gitignore
+
+# Python artifacts
+__pycache__
+*.py[cod]
+*.egg-info
+dist
+.eggs
+.venv
+
+# Testing
+tests
+.pytest_cache
+.coverage
+htmlcov
+
+# Development tools
+.ruff_cache
+.claude
+.superpowers
+.worktrees
+
+# Documentation
+docs
+*.md
+
+# Environment (secrets must come from env vars, not baked into image)
+.env
+.env.*
+
+# IDE
+.vscode
+.idea
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Scripts (not needed in runtime image)
+scripts

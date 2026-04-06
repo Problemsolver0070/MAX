@@ -73,3 +73,39 @@ class TestDockerfile:
 
     def test_workdir_set(self) -> None:
         assert "WORKDIR" in self.dockerfile
+
+
+class TestDockerignore:
+    """Validate .dockerignore excludes unnecessary files from build context."""
+
+    def setup_method(self) -> None:
+        self.dockerignore = (PROJECT_ROOT / ".dockerignore").read_text()
+        self.entries = [
+            line.strip()
+            for line in self.dockerignore.splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        ]
+
+    def test_dockerignore_exists(self) -> None:
+        assert (PROJECT_ROOT / ".dockerignore").exists()
+
+    def test_excludes_venv(self) -> None:
+        assert ".venv" in self.entries or ".venv/" in self.entries
+
+    def test_excludes_pycache(self) -> None:
+        assert any("__pycache__" in e for e in self.entries)
+
+    def test_excludes_git(self) -> None:
+        assert ".git" in self.entries or ".git/" in self.entries
+
+    def test_excludes_tests(self) -> None:
+        assert "tests" in self.entries or "tests/" in self.entries
+
+    def test_excludes_env_file(self) -> None:
+        assert ".env" in self.entries
+
+    def test_excludes_docs(self) -> None:
+        assert "docs" in self.entries or "docs/" in self.entries
+
+    def test_excludes_claude_dir(self) -> None:
+        assert ".claude" in self.entries or ".claude/" in self.entries
