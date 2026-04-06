@@ -103,9 +103,20 @@ class TestDockerignore:
 
     def test_excludes_env_file(self) -> None:
         assert ".env" in self.entries
+        assert ".env.*" in self.entries
 
     def test_excludes_docs(self) -> None:
         assert "docs" in self.entries or "docs/" in self.entries
 
     def test_excludes_claude_dir(self) -> None:
         assert ".claude" in self.entries or ".claude/" in self.entries
+
+    def test_does_not_exclude_uv_lock(self) -> None:
+        """uv.lock must remain in build context for reproducible installs."""
+        assert "uv.lock" not in self.entries
+        assert "*.lock" not in self.entries
+
+    def test_does_not_exclude_pyproject_toml(self) -> None:
+        """pyproject.toml must remain in build context for uv sync."""
+        assert "pyproject.toml" not in self.entries
+        assert "*.toml" not in self.entries
