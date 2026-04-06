@@ -291,6 +291,19 @@ def create_app_state(settings: Settings) -> AppState:
         store=sentinel_store,
     )
 
+    # ── Communication (conditional on Telegram token) ─────────────────
+    message_router = None
+    if settings.telegram_bot_token:
+        from max.comm.router import MessageRouter
+
+        message_router = MessageRouter(
+            settings=settings,
+            llm=llm,
+            bus=bus,
+            db=db,
+            warm_memory=warm_memory,
+        )
+
     # ── Assemble agents dict ───────────────────────────────────────────
     agents: dict[str, Any] = {
         "coordinator": coordinator,
@@ -300,6 +313,8 @@ def create_app_state(settings: Settings) -> AppState:
         "evolution_director": evolution_director,
         "sentinel": sentinel_agent,
     }
+    if message_router is not None:
+        agents["message_router"] = message_router
 
     return AppState(
         settings=settings,

@@ -124,6 +124,51 @@ class TestCreateAppState:
         assert isinstance(state.transport, StreamsTransport)
 
     @pytest.mark.asyncio
+    async def test_message_router_created_with_telegram_token(self):
+        """MessageRouter should be in agents when telegram_bot_token is set."""
+        settings = _make_settings(
+            telegram_bot_token="123:faketoken",
+            max_owner_telegram_id="999",
+        )
+        mock_redis = MagicMock()
+        mock_redis.close = AsyncMock()
+
+        with (
+            patch("max.app.aioredis.from_url", return_value=mock_redis),
+            patch("max.app.Database") as mock_db_cls,
+            patch("max.app.configure_logging"),
+            patch("max.app.configure_metrics") as mock_metrics,
+        ):
+            mock_db_cls.return_value = MagicMock()
+            mock_metrics.return_value = MagicMock()
+            from max.app import create_app_state
+
+            state = create_app_state(settings)
+
+        assert "message_router" in state.agents
+
+    @pytest.mark.asyncio
+    async def test_message_router_not_created_without_telegram_token(self):
+        """MessageRouter should NOT be in agents when telegram_bot_token is empty."""
+        settings = _make_settings()  # no telegram_bot_token
+        mock_redis = MagicMock()
+        mock_redis.close = AsyncMock()
+
+        with (
+            patch("max.app.aioredis.from_url", return_value=mock_redis),
+            patch("max.app.Database") as mock_db_cls,
+            patch("max.app.configure_logging"),
+            patch("max.app.configure_metrics") as mock_metrics,
+        ):
+            mock_db_cls.return_value = MagicMock()
+            mock_metrics.return_value = MagicMock()
+            from max.app import create_app_state
+
+            state = create_app_state(settings)
+
+        assert "message_router" not in state.agents
+
+    @pytest.mark.asyncio
     async def test_pubsub_fallback_when_not_streams(self):
         """When bus_transport!='streams', transport should be None (pubsub fallback)."""
         settings = _make_settings(bus_transport="pubsub")
