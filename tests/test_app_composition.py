@@ -79,6 +79,27 @@ class TestCreateAppState:
         assert "sentinel" in state.agents
 
     @pytest.mark.asyncio
+    async def test_base_url_passed_to_llm_client(self):
+        """create_app_state should pass anthropic_base_url to LLMClient."""
+        settings = _make_settings(anthropic_base_url="https://example.com/anthropic")
+        mock_redis = MagicMock()
+        mock_redis.close = AsyncMock()
+
+        with (
+            patch("max.app.aioredis.from_url", return_value=mock_redis),
+            patch("max.app.Database") as mock_db_cls,
+            patch("max.app.configure_logging"),
+            patch("max.app.configure_metrics") as mock_metrics,
+        ):
+            mock_db_cls.return_value = MagicMock()
+            mock_metrics.return_value = MagicMock()
+            from max.app import create_app_state
+
+            state = create_app_state(settings)
+
+        assert "example.com" in str(state.llm._client.base_url)
+
+    @pytest.mark.asyncio
     async def test_streams_transport_when_configured(self):
         """When bus_transport='streams', transport should be a StreamsTransport."""
         settings = _make_settings(bus_transport="streams")

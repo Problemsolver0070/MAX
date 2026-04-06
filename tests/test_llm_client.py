@@ -148,6 +148,25 @@ def test_llm_error_hierarchy():
 # --- Tool use test ---
 
 
+def test_client_creation_with_base_url():
+    """LLMClient should pass base_url through to AsyncAnthropic."""
+    client = LLMClient(api_key="test-key", base_url="https://example.com/anthropic")
+    assert client is not None
+    # The base_url should be set on the underlying client
+    assert "example.com" in str(client._client.base_url)
+
+
+def test_client_creation_with_empty_base_url():
+    """Empty base_url should use default Anthropic endpoint."""
+    client = LLMClient(api_key="test-key", base_url="")
+    assert client is not None
+    # Default Anthropic endpoint
+    assert "anthropic.com" in str(client._client.base_url)
+
+
+# --- Tool use test ---
+
+
 @pytest.mark.asyncio
 async def test_client_complete_with_tool_use(llm_client):
     mock_response = MagicMock()

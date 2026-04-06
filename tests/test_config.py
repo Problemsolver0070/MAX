@@ -115,3 +115,15 @@ def test_tool_system_settings_defaults(settings):
     assert settings.tool_audit_enabled is True
     assert settings.tool_shell_timeout_seconds == 30
     assert settings.tool_http_timeout_seconds == 30
+
+
+def test_anthropic_base_url_default(settings):
+    assert settings.anthropic_base_url == ""
+
+
+def test_anthropic_base_url_from_env(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "test")
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://example.com/anthropic")
+    settings = Settings()
+    assert settings.anthropic_base_url == "https://example.com/anthropic"

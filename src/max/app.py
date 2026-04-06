@@ -131,6 +131,7 @@ def create_app_state(settings: Settings) -> AppState:
     )
     llm = LLMClient(
         api_key=settings.anthropic_api_key,
+        base_url=settings.anthropic_base_url,
         circuit_breaker=circuit_breaker,
     )
 
