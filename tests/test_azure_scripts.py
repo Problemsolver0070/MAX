@@ -85,6 +85,60 @@ class TestAzureProvisionScript:
         """Must store secrets in Key Vault."""
         assert "az keyvault secret set" in self.script
 
+    def test_configures_anthropic_api_key_secret(self) -> None:
+        """Must configure anthropic-api-key as a Container App secret."""
+        assert "anthropic-api-key" in self.script
+
+    def test_configures_telegram_bot_token_secret(self) -> None:
+        """Must configure telegram-bot-token as a Container App secret."""
+        assert "telegram-bot-token" in self.script
+
+    def test_configures_max_api_keys_secret(self) -> None:
+        """Must configure max-api-keys as a Container App secret."""
+        assert "max-api-keys" in self.script
+
+    def test_configures_comm_webhook_secret(self) -> None:
+        """Must configure comm-webhook-secret as a Container App secret."""
+        assert "comm-webhook-secret" in self.script
+
+    def test_configures_anthropic_base_url_env_var(self) -> None:
+        """Must wire ANTHROPIC_BASE_URL as an environment variable."""
+        assert "ANTHROPIC_BASE_URL" in self.script
+
+    def test_configures_comm_webhook_enabled(self) -> None:
+        """Must wire COMM_WEBHOOK_ENABLED as an environment variable."""
+        assert "COMM_WEBHOOK_ENABLED" in self.script
+
+    def test_configures_webhook_url_from_fqdn(self) -> None:
+        """Must compute and set COMM_WEBHOOK_URL from Container App FQDN."""
+        assert "COMM_WEBHOOK_URL" in self.script
+
+    def test_configures_telegram_owner_id_env_var(self) -> None:
+        """Must wire MAX_OWNER_TELEGRAM_ID as an environment variable."""
+        assert "MAX_OWNER_TELEGRAM_ID" in self.script
+
+    def test_stores_anthropic_api_key_in_keyvault(self) -> None:
+        """Must store anthropic-api-key in Key Vault when provided."""
+        # The script should have a keyvault secret set for anthropic-api-key
+        assert '--name "anthropic-api-key"' in self.script
+
+    def test_stores_telegram_bot_token_in_keyvault(self) -> None:
+        """Must store telegram-bot-token in Key Vault when provided."""
+        assert '--name "telegram-bot-token"' in self.script
+
+    def test_stores_max_api_keys_in_keyvault(self) -> None:
+        """Must store max-api-keys in Key Vault when provided."""
+        assert '--name "max-api-keys"' in self.script
+
+    def test_stores_comm_webhook_secret_in_keyvault(self) -> None:
+        """Must store comm-webhook-secret in Key Vault."""
+        assert '--name "comm-webhook-secret"' in self.script
+
+    def test_auto_generates_webhook_secret(self) -> None:
+        """Must auto-generate comm-webhook-secret if not provided."""
+        assert "COMM_WEBHOOK_SECRET" in self.script
+        assert "openssl rand" in self.script
+
     def test_no_hardcoded_passwords(self) -> None:
         """Must not contain hardcoded passwords — use variables or generation."""
         import re
