@@ -145,6 +145,16 @@ class TestConfigureLogging:
         for h in json_handlers:
             root.removeHandler(h)
 
+    def test_repeated_calls_do_not_duplicate_handlers(self):
+        configure_logging(level="DEBUG", json_format=True)
+        configure_logging(level="DEBUG", json_format=True)
+        root = logging.getLogger()
+        json_handlers = [h for h in root.handlers if isinstance(h.formatter, JsonFormatter)]
+        assert len(json_handlers) == 1
+        # Cleanup
+        for h in json_handlers:
+            root.removeHandler(h)
+
 
 class TestMetricsRegistry:
     def test_creates_counter(self):

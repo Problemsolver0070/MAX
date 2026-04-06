@@ -83,6 +83,10 @@ def configure_logging(
     root.setLevel(getattr(logging, level.upper(), logging.DEBUG))
 
     if json_format:
+        # Avoid duplicate JSON handlers on repeated calls
+        for existing in root.handlers[:]:
+            if isinstance(existing.formatter, JsonFormatter):
+                root.removeHandler(existing)
         handler = logging.StreamHandler()
         handler.setFormatter(JsonFormatter())
         root.addHandler(handler)
@@ -126,24 +130,29 @@ class MetricsRegistry:
 # ── Metrics Configuration ─────────────────────────────────────────────
 
 
+_metrics_configured = False
+
+
 def configure_metrics(
     service_name: str = "max",
     enabled: bool = False,
-    exporter_endpoint: str = "",
 ) -> MetricsRegistry:
     """Configure OpenTelemetry metrics.
 
     Args:
         service_name: Service name for metric labeling.
-        enabled: If True, set up a real meter provider with exporters.
-        exporter_endpoint: OTLP exporter endpoint (if empty, uses console).
+        enabled: If True, set up a real meter provider with console exporter.
+            OTLP exporter support will be added when opentelemetry-exporter-otlp
+            is introduced; use the otel_exporter_endpoint config field at that time.
     """
-    if enabled:
+    global _metrics_configured  # noqa: PLW0603
+    if enabled and not _metrics_configured:
         reader = PeriodicExportingMetricReader(
             ConsoleMetricExporter(),
             export_interval_millis=60000,
         )
         provider = MeterProvider(metric_readers=[reader])
         metrics.set_meter_provider(provider)
+        _metrics_configured = True
 
     return MetricsRegistry(meter_name=service_name)
