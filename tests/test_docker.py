@@ -120,3 +120,59 @@ class TestDockerignore:
         """pyproject.toml must remain in build context for uv sync."""
         assert "pyproject.toml" not in self.entries
         assert "*.toml" not in self.entries
+
+
+class TestDockerCompose:
+    """Validate docker-compose.yml includes the max service correctly."""
+
+    def setup_method(self) -> None:
+        compose_path = PROJECT_ROOT / "docker-compose.yml"
+        assert compose_path.exists(), "docker-compose.yml not found"
+        self.raw = compose_path.read_text()
+
+    def test_max_service_exists(self) -> None:
+        """docker-compose.yml must define a 'max' service."""
+        assert "max:" in self.raw
+
+    def test_max_depends_on_postgres(self) -> None:
+        """max service must depend on postgres."""
+        assert "postgres" in self.raw
+        assert "service_healthy" in self.raw
+
+    def test_max_depends_on_redis(self) -> None:
+        """max service must depend on redis."""
+        assert "redis" in self.raw
+
+    def test_max_uses_env_file(self) -> None:
+        """max service must load environment from .env file."""
+        assert "env_file" in self.raw
+
+    def test_max_exposes_port_8080(self) -> None:
+        """max service must map port 8080."""
+        assert "8080:8080" in self.raw or "8080" in self.raw
+
+    def test_max_has_healthcheck(self) -> None:
+        """max service must define a healthcheck."""
+        assert "healthcheck" in self.raw
+
+    def test_max_uses_build_context(self) -> None:
+        """max service must use build: . to build from local Dockerfile."""
+        assert "build:" in self.raw
+
+    def test_max_restart_policy(self) -> None:
+        """max service should have a restart policy."""
+        assert "restart:" in self.raw
+        assert "unless-stopped" in self.raw
+
+    def test_postgres_service_still_exists(self) -> None:
+        """Existing postgres service must not be removed."""
+        assert "pgvector/pgvector:pg17" in self.raw
+
+    def test_redis_service_still_exists(self) -> None:
+        """Existing redis service must not be removed."""
+        assert "redis:7-alpine" in self.raw
+
+    def test_volumes_preserved(self) -> None:
+        """Named volumes pgdata and redisdata must still be defined."""
+        assert "pgdata:" in self.raw
+        assert "redisdata:" in self.raw

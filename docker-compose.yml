@@ -1,4 +1,28 @@
 services:
+  max:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file: .env
+    ports:
+      - "8080:8080"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=max
+      - POSTGRES_USER=max
+      - REDIS_URL=redis://redis:6379/0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start-period: 15s
+      retries: 3
+    restart: unless-stopped
+
   postgres:
     image: pgvector/pgvector:pg17
     environment:
