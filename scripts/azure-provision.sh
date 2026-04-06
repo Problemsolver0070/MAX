@@ -23,10 +23,10 @@ LOCATION="${LOCATION:-eastus}"
 APP_NAME="${APP_NAME:-max}"
 
 # Resource names (derived from app name)
-ACR_NAME="${ACR_NAME:-${APP_NAME}acr}"
+ACR_NAME="${ACR_NAME:-${APP_NAME}everactiveacr}"
 POSTGRES_SERVER="${POSTGRES_SERVER:-${APP_NAME}-pgserver}"
 REDIS_NAME="${REDIS_NAME:-${APP_NAME}-redis}"
-KEYVAULT_NAME="${KEYVAULT_NAME:-${APP_NAME}-kv}"
+KEYVAULT_NAME="${KEYVAULT_NAME:-${APP_NAME}-everactive-kv}"
 LOG_ANALYTICS_NAME="${LOG_ANALYTICS_NAME:-${APP_NAME}-logs}"
 CONTAINER_ENV_NAME="${CONTAINER_ENV_NAME:-${APP_NAME}-env}"
 CONTAINER_APP_NAME="${CONTAINER_APP_NAME:-${APP_NAME}-app}"
@@ -72,8 +72,7 @@ az monitor log-analytics workspace create \
     --resource-group "${RESOURCE_GROUP}" \
     --workspace-name "${LOG_ANALYTICS_NAME}" \
     --location "${LOCATION}" \
-    --retention-in-days 30 \
-    --output none
+    --output none 2>/dev/null || echo "Log Analytics workspace may already exist."
 LOG_ANALYTICS_ID=$(az monitor log-analytics workspace show \
     --resource-group "${RESOURCE_GROUP}" \
     --workspace-name "${LOG_ANALYTICS_NAME}" \
