@@ -34,7 +34,24 @@ CONTAINER_APP_NAME="${CONTAINER_APP_NAME:-${APP_NAME}-app}"
 # Database
 POSTGRES_DB="max"
 POSTGRES_USER="maxadmin"
-POSTGRES_PASSWORD="$(openssl rand -base64 32)"
+
+# Check if PostgreSQL server already exists to preserve existing password
+if az postgres flexible-server show \
+    --resource-group "${RESOURCE_GROUP}" \
+    --name "${POSTGRES_SERVER}" \
+    --output none 2>/dev/null; then
+    echo "PostgreSQL server exists, retrieving password from Key Vault..."
+    POSTGRES_PASSWORD=$(az keyvault secret show \
+        --vault-name "${KEYVAULT_NAME}" \
+        --name "postgres-password" \
+        --query value -o tsv 2>/dev/null || echo "")
+    if [ -z "${POSTGRES_PASSWORD}" ]; then
+        echo "WARNING: Could not retrieve password from Key Vault, generating new one."
+        POSTGRES_PASSWORD="$(openssl rand -base64 32)"
+    fi
+else
+    POSTGRES_PASSWORD="$(openssl rand -base64 32)"
+fi
 
 echo "=== Max Azure Provisioning ==="
 echo "Resource Group: ${RESOURCE_GROUP}"
@@ -117,6 +134,16 @@ az redis create \
     --sku Basic \
     --vm-size c0 \
     --output none 2>/dev/null || echo "Redis cache may already exist, continuing..."
+
+# Fetch Redis connection details for Key Vault storage and Container App secrets
+REDIS_HOST=$(az redis show \
+    --resource-group "${RESOURCE_GROUP}" \
+    --name "${REDIS_NAME}" \
+    --query hostName -o tsv 2>/dev/null || echo "${REDIS_NAME}.redis.cache.windows.net")
+REDIS_KEY=$(az redis list-keys \
+    --resource-group "${RESOURCE_GROUP}" \
+    --name "${REDIS_NAME}" \
+    --query primaryKey -o tsv 2>/dev/null || echo "")
 echo "Redis cache '${REDIS_NAME}' ready."
 
 # ── 6. Azure Key Vault ───────────────────────────────────────────────────
@@ -141,6 +168,15 @@ az keyvault secret set \
     --value "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_SERVER}.postgres.database.azure.com:5432/${POSTGRES_DB}?sslmode=require" \
     --output none
 
+# Store Redis connection URL in Key Vault
+if [ -n "${REDIS_KEY}" ]; then
+    az keyvault secret set \
+        --vault-name "${KEYVAULT_NAME}" \
+        --name "redis-url" \
+        --value "rediss://:${REDIS_KEY}@${REDIS_HOST}:6380/0" \
+        --output none
+fi
+
 echo "Key Vault '${KEYVAULT_NAME}' ready with secrets stored."
 
 # ── 7. Container Apps Environment ─────────────────────────────────────────
@@ -161,16 +197,6 @@ echo "Container Apps environment '${CONTAINER_ENV_NAME}' ready."
 
 # ── 8. Container App ─────────────────────────────────────────────────────
 echo "--- 8/9: Container App ---"
-# Get Redis connection string for env vars
-REDIS_HOST=$(az redis show \
-    --resource-group "${RESOURCE_GROUP}" \
-    --name "${REDIS_NAME}" \
-    --query hostName -o tsv 2>/dev/null || echo "${REDIS_NAME}.redis.cache.windows.net")
-REDIS_KEY=$(az redis list-keys \
-    --resource-group "${RESOURCE_GROUP}" \
-    --name "${REDIS_NAME}" \
-    --query primaryKey -o tsv 2>/dev/null || echo "")
-
 az containerapp create \
     --resource-group "${RESOURCE_GROUP}" \
     --name "${CONTAINER_APP_NAME}" \
@@ -183,13 +209,16 @@ az containerapp create \
     --max-replicas 10 \
     --cpu 1.0 \
     --memory 2.0Gi \
+    --secrets \
+        "postgres-password=${POSTGRES_PASSWORD}" \
+        "redis-url=rediss://:${REDIS_KEY}@${REDIS_HOST}:6380/0" \
     --env-vars \
         "POSTGRES_HOST=${POSTGRES_SERVER}.postgres.database.azure.com" \
         "POSTGRES_PORT=5432" \
         "POSTGRES_DB=${POSTGRES_DB}" \
         "POSTGRES_USER=${POSTGRES_USER}" \
         "POSTGRES_PASSWORD=secretref:postgres-password" \
-        "REDIS_URL=rediss://:${REDIS_KEY}@${REDIS_HOST}:6380/0" \
+        "REDIS_URL=secretref:redis-url" \
         "AZURE_KEY_VAULT_URL=https://${KEYVAULT_NAME}.vault.azure.net/" \
         "MAX_LOG_LEVEL=INFO" \
         "MAX_HOST=0.0.0.0" \
