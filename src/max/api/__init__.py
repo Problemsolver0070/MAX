@@ -1,0 +1,1 @@
+"""Max REST API package."""
