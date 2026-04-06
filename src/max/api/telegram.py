@@ -44,6 +44,11 @@ async def telegram_webhook(request: Request) -> dict:
         user_id = from_user.get("id", 0)
         chat_id = message.get("chat", {}).get("id", 0)
 
+        # Owner authorization — silently drop messages from non-owner users
+        owner_id = state.settings.max_owner_telegram_id
+        if owner_id and user_id != int(owner_id):
+            return {"ok": True}
+
         msg_type = MessageType.COMMAND if text and text.startswith("/") else MessageType.TEXT
         command = None
         command_args = None
