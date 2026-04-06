@@ -131,24 +131,18 @@ class StreamsTransport:
 
         messages: list[dict[str, Any]] = []
         for stream_ref, entries in raw:
-            stream_name = (
-                stream_ref.decode() if isinstance(stream_ref, bytes) else stream_ref
-            )
+            stream_name = stream_ref.decode() if isinstance(stream_ref, bytes) else stream_ref
             channel = stream_name.removeprefix("stream:")
 
             for entry_id_ref, fields in entries:
                 entry_id = (
-                    entry_id_ref.decode()
-                    if isinstance(entry_id_ref, bytes)
-                    else entry_id_ref
+                    entry_id_ref.decode() if isinstance(entry_id_ref, bytes) else entry_id_ref
                 )
                 # Handle both bytes-keyed and string-keyed field dicts
                 data_raw = fields.get(b"data") or fields.get("data", "{}")
                 if isinstance(data_raw, bytes):
                     data_raw = data_raw.decode()
-                message_id_raw = (
-                    fields.get(b"message_id") or fields.get("message_id", "")
-                )
+                message_id_raw = fields.get(b"message_id") or fields.get("message_id", "")
                 if isinstance(message_id_raw, bytes):
                     message_id_raw = message_id_raw.decode()
 
@@ -157,12 +151,14 @@ class StreamsTransport:
                 except (json.JSONDecodeError, TypeError):
                     data = {}
 
-                messages.append({
-                    "channel": channel,
-                    "data": data,
-                    "stream_id": entry_id,
-                    "message_id": message_id_raw,
-                })
+                messages.append(
+                    {
+                        "channel": channel,
+                        "data": data,
+                        "stream_id": entry_id,
+                        "message_id": message_id_raw,
+                    }
+                )
 
         return messages
 
@@ -209,9 +205,7 @@ class StreamsTransport:
             error,
         )
 
-    async def get_dead_letters(
-        self, channel: str, count: int = 50
-    ) -> list[dict[str, Any]]:
+    async def get_dead_letters(self, channel: str, count: int = 50) -> list[dict[str, Any]]:
         """Retrieve dead letter entries for a channel.
 
         Returns a list of dicts, each containing ``original_data``,

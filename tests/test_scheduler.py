@@ -102,9 +102,7 @@ class TestTick:
     async def test_executes_due_job(self, scheduler, mock_db):
         callback = AsyncMock()
         scheduler.register("due_job", 60, callback)
-        scheduler._jobs["due_job"].next_run_at = datetime.now(UTC) - timedelta(
-            seconds=10
-        )
+        scheduler._jobs["due_job"].next_run_at = datetime.now(UTC) - timedelta(seconds=10)
 
         await scheduler.tick()
         callback.assert_called_once()
@@ -112,9 +110,7 @@ class TestTick:
     async def test_skips_not_due_job(self, scheduler, mock_db):
         callback = AsyncMock()
         scheduler.register("future_job", 60, callback)
-        scheduler._jobs["future_job"].next_run_at = datetime.now(UTC) + timedelta(
-            hours=1
-        )
+        scheduler._jobs["future_job"].next_run_at = datetime.now(UTC) + timedelta(hours=1)
 
         await scheduler.tick()
         callback.assert_not_called()
@@ -122,9 +118,7 @@ class TestTick:
     async def test_updates_next_run_after_execution(self, scheduler, mock_db):
         callback = AsyncMock()
         scheduler.register("update_job", 60, callback)
-        scheduler._jobs["update_job"].next_run_at = datetime.now(UTC) - timedelta(
-            seconds=10
-        )
+        scheduler._jobs["update_job"].next_run_at = datetime.now(UTC) - timedelta(seconds=10)
 
         await scheduler.tick()
         # Next run should be ~60 seconds from now
@@ -134,9 +128,7 @@ class TestTick:
     async def test_persists_state_after_execution(self, scheduler, mock_db):
         callback = AsyncMock()
         scheduler.register("persist_job", 60, callback)
-        scheduler._jobs["persist_job"].next_run_at = datetime.now(UTC) - timedelta(
-            seconds=10
-        )
+        scheduler._jobs["persist_job"].next_run_at = datetime.now(UTC) - timedelta(seconds=10)
 
         await scheduler.tick()
         mock_db.execute.assert_called()
@@ -144,9 +136,7 @@ class TestTick:
     async def test_handles_callback_error_gracefully(self, scheduler, mock_db):
         callback = AsyncMock(side_effect=Exception("boom"))
         scheduler.register("error_job", 60, callback)
-        scheduler._jobs["error_job"].next_run_at = datetime.now(UTC) - timedelta(
-            seconds=10
-        )
+        scheduler._jobs["error_job"].next_run_at = datetime.now(UTC) - timedelta(seconds=10)
 
         await scheduler.tick()  # should not raise
         # next_run should still advance to prevent infinite retry loops

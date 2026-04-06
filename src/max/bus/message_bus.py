@@ -75,9 +75,7 @@ class MessageBus:
             len(self._handlers[channel]),
         )
 
-    async def unsubscribe(
-        self, channel: str, handler: Handler | None = None
-    ) -> None:
+    async def unsubscribe(self, channel: str, handler: Handler | None = None) -> None:
         """Remove a handler (or all handlers) for a channel.
 
         When the last handler for a channel is removed, the pub/sub
@@ -89,9 +87,7 @@ class MessageBus:
         if handler is None:
             del self._handlers[channel]
         else:
-            self._handlers[channel] = [
-                h for h in self._handlers[channel] if h is not handler
-            ]
+            self._handlers[channel] = [h for h in self._handlers[channel] if h is not handler]
             if not self._handlers[channel]:
                 del self._handlers[channel]
 
@@ -167,9 +163,7 @@ class MessageBus:
                     await asyncio.sleep(0.05)
                     continue
 
-                messages = await self._transport.read_messages(
-                    channels, timeout_ms=1000
-                )
+                messages = await self._transport.read_messages(channels, timeout_ms=1000)
 
                 for msg in messages:
                     channel = msg["channel"]
@@ -238,18 +232,14 @@ class MessageBus:
                 try:
                     data = json.loads(message["data"])
                 except (json.JSONDecodeError, TypeError):
-                    logger.exception(
-                        "Failed to decode message on %s", channel
-                    )
+                    logger.exception("Failed to decode message on %s", channel)
                     continue
 
                 for handler in handlers:
                     try:
                         await handler(channel, data)
                     except Exception:
-                        logger.exception(
-                            "Error in handler for %s", channel
-                        )
+                        logger.exception("Error in handler for %s", channel)
         except asyncio.CancelledError:
             raise
 

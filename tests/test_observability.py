@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
-
-import pytest
 
 from max.observability import (
     CorrelationContext,
     JsonFormatter,
+    MetricsRegistry,
     configure_logging,
+    configure_metrics,
     get_correlation_id,
     set_correlation_id,
 )
@@ -38,8 +37,13 @@ class TestJsonFormatter:
     def test_includes_timestamp(self):
         formatter = JsonFormatter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="hi", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="hi",
+            args=(),
+            exc_info=None,
         )
         output = formatter.format(record)
         parsed = json.loads(output)
@@ -50,8 +54,13 @@ class TestJsonFormatter:
         token = set_correlation_id("test-corr-123")
         try:
             record = logging.LogRecord(
-                name="test", level=logging.INFO, pathname="", lineno=0,
-                msg="hi", args=(), exc_info=None,
+                name="test",
+                level=logging.INFO,
+                pathname="",
+                lineno=0,
+                msg="hi",
+                args=(),
+                exc_info=None,
             )
             output = formatter.format(record)
             parsed = json.loads(output)
@@ -62,8 +71,13 @@ class TestJsonFormatter:
     def test_correlation_id_null_when_not_set(self):
         formatter = JsonFormatter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="hi", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="hi",
+            args=(),
+            exc_info=None,
         )
         output = formatter.format(record)
         parsed = json.loads(output)
@@ -77,8 +91,13 @@ class TestJsonFormatter:
             import sys
 
             record = logging.LogRecord(
-                name="test", level=logging.ERROR, pathname="", lineno=0,
-                msg="error", args=(), exc_info=sys.exc_info(),
+                name="test",
+                level=logging.ERROR,
+                pathname="",
+                lineno=0,
+                msg="error",
+                args=(),
+                exc_info=sys.exc_info(),
             )
         output = formatter.format(record)
         parsed = json.loads(output)
@@ -120,18 +139,11 @@ class TestConfigureLogging:
     def test_adds_json_handler(self):
         configure_logging(level="DEBUG", json_format=True)
         root = logging.getLogger()
-        json_handlers = [
-            h
-            for h in root.handlers
-            if isinstance(h.formatter, JsonFormatter)
-        ]
+        json_handlers = [h for h in root.handlers if isinstance(h.formatter, JsonFormatter)]
         assert len(json_handlers) >= 1
         # Cleanup
         for h in json_handlers:
             root.removeHandler(h)
-
-
-from max.observability import MetricsRegistry, configure_metrics
 
 
 class TestMetricsRegistry:

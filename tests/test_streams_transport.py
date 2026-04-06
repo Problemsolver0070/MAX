@@ -198,9 +198,7 @@ class TestConsume:
 class TestAcknowledge:
     async def test_acknowledges_message(self, transport, mock_redis):
         await transport.ack("test_channel", "1234-0")
-        mock_redis.xack.assert_called_once_with(
-            "stream:test_channel", "test_group", "1234-0"
-        )
+        mock_redis.xack.assert_called_once_with("stream:test_channel", "test_group", "1234-0")
 
 
 class TestDeadLetter:
@@ -265,12 +263,14 @@ class TestGetDeadLetters:
             (
                 b"1-0",
                 {
-                    b"data": json.dumps({
-                        "original_data": {"x": 1},
-                        "error": "boom",
-                        "attempt": 3,
-                        "channel": "ch",
-                    }).encode()
+                    b"data": json.dumps(
+                        {
+                            "original_data": {"x": 1},
+                            "error": "boom",
+                            "attempt": 3,
+                            "channel": "ch",
+                        }
+                    ).encode()
                 },
             )
         ]

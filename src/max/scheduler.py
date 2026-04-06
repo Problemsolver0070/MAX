@@ -42,9 +42,7 @@ class SchedulerJob:
     def advance(self) -> None:
         """Advance next_run_at by the interval from now."""
         self.last_run_at = datetime.now(UTC)
-        self.next_run_at = self.last_run_at + timedelta(
-            seconds=self.interval_seconds
-        )
+        self.next_run_at = self.last_run_at + timedelta(seconds=self.interval_seconds)
 
 
 class Scheduler:
@@ -90,9 +88,7 @@ class Scheduler:
                     job.next_run_at,
                 )
             else:
-                logger.info(
-                    "No persisted state for %s, starting due now", job.name
-                )
+                logger.info("No persisted state for %s, starting due now", job.name)
 
     async def _persist_state(self, job: SchedulerJob) -> None:
         """Save job state to the database (upsert)."""
@@ -128,9 +124,7 @@ class Scheduler:
                 try:
                     await self._persist_state(job)
                 except Exception:
-                    logger.exception(
-                        "Failed to persist state for job %s", job.name
-                    )
+                    logger.exception("Failed to persist state for job %s", job.name)
 
     async def start(self) -> None:
         """Start the scheduler background loop."""

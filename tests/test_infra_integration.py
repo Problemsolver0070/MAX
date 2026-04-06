@@ -24,13 +24,10 @@ from max.llm.circuit_breaker import (
 from max.observability import (
     CorrelationContext,
     JsonFormatter,
-    MetricsRegistry,
-    configure_logging,
     configure_metrics,
-    get_correlation_id,
     set_correlation_id,
 )
-from max.scheduler import Scheduler, SchedulerJob
+from max.scheduler import SchedulerJob
 
 
 class TestCircuitBreakerFullCycle:
