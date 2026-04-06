@@ -104,3 +104,54 @@ class TestAzureProvisionScript:
                     or rhs == "''"
                     or len(rhs) == 0
                 ), f"Line {i+1} may contain a hardcoded password: {line.strip()}"
+
+
+class TestDeployScript:
+    """Validate scripts/deploy.sh structure and completeness."""
+
+    def setup_method(self) -> None:
+        self.script_path = PROJECT_ROOT / "scripts" / "deploy.sh"
+        self.script = self.script_path.read_text()
+        self.lines = self.script.splitlines()
+
+    def test_script_exists(self) -> None:
+        assert self.script_path.exists()
+
+    def test_script_is_executable(self) -> None:
+        mode = self.script_path.stat().st_mode
+        assert mode & stat.S_IXUSR, "Script must be executable (chmod +x)"
+
+    def test_has_bash_shebang(self) -> None:
+        assert self.lines[0].startswith("#!/")
+        assert "bash" in self.lines[0]
+
+    def test_uses_strict_mode(self) -> None:
+        assert "set -euo pipefail" in self.script
+
+    def test_builds_docker_image(self) -> None:
+        """Must build the Docker image."""
+        assert "docker build" in self.script
+
+    def test_logs_into_acr(self) -> None:
+        """Must authenticate with Azure Container Registry."""
+        assert "az acr login" in self.script
+
+    def test_tags_image(self) -> None:
+        """Must tag image for ACR."""
+        assert "docker tag" in self.script
+
+    def test_pushes_image(self) -> None:
+        """Must push image to ACR."""
+        assert "docker push" in self.script
+
+    def test_updates_container_app(self) -> None:
+        """Must update the Container App with new image."""
+        assert "az containerapp update" in self.script
+
+    def test_uses_git_sha_tag(self) -> None:
+        """Should tag images with git SHA for traceability."""
+        assert "git rev-parse" in self.script or "GIT_SHA" in self.script
+
+    def test_verification_step(self) -> None:
+        """Should verify deployment succeeded (health check or status)."""
+        assert "health" in self.script.lower() or "verify" in self.script.lower()
