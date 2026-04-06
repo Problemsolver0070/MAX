@@ -13,7 +13,7 @@ from max.api.telegram import router
 
 def _make_state(**overrides) -> AppState:
     defaults = {
-        "settings": MagicMock(comm_webhook_secret="my-secret"),
+        "settings": MagicMock(comm_webhook_secret="my-secret", max_owner_telegram_id=None),
         "db": MagicMock(),
         "redis_client": MagicMock(),
         "bus": AsyncMock(),
@@ -115,7 +115,8 @@ class TestTelegramWebhook:
         """When message_router is in agents, should call _on_inbound instead of bus.publish."""
         mock_router = AsyncMock()
         mock_router._on_inbound = AsyncMock()
-        state = _make_state(agents={"message_router": mock_router})
+        settings = MagicMock(comm_webhook_secret="my-secret", max_owner_telegram_id="999")
+        state = _make_state(settings=settings, agents={"message_router": mock_router})
         app = _make_app(state)
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
@@ -146,7 +147,8 @@ class TestTelegramWebhook:
         """Commands (starting with /) should be parsed and delegated to MessageRouter."""
         mock_router = AsyncMock()
         mock_router._on_inbound = AsyncMock()
-        state = _make_state(agents={"message_router": mock_router})
+        settings = MagicMock(comm_webhook_secret="my-secret", max_owner_telegram_id="999")
+        state = _make_state(settings=settings, agents={"message_router": mock_router})
         app = _make_app(state)
 
         command_update = {
@@ -193,3 +195,34 @@ class TestTelegramWebhook:
         call_data = state.bus.publish.call_args[0][1]
         assert call_data["user_message"] == "Hello from Telegram"
         assert call_data["source_platform"] == "telegram"
+
+    async def test_drops_non_owner_message_with_router(self):
+        """Non-owner messages should be silently dropped when router is available."""
+        mock_router = AsyncMock()
+        mock_router._on_inbound = AsyncMock()
+        settings = MagicMock(comm_webhook_secret="my-secret", max_owner_telegram_id="999")
+        state = _make_state(settings=settings, agents={"message_router": mock_router})
+        app = _make_app(state)
+
+        non_owner_update = {
+            "update_id": 123456,
+            "message": {
+                "message_id": 3,
+                "from": {"id": 123, "is_bot": False, "first_name": "Stranger"},
+                "chat": {"id": 123, "type": "private"},
+                "date": 1700000000,
+                "text": "I should not get through",
+            },
+        }
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            r = await c.post(
+                "/webhook/telegram",
+                json=non_owner_update,
+                headers={"X-Telegram-Bot-Api-Secret-Token": "my-secret"},
+            )
+
+        assert r.status_code == 200
+        assert r.json() == {"ok": True}
+        mock_router._on_inbound.assert_not_called()
+        state.bus.publish.assert_not_called()
