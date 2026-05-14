@@ -1,6 +1,6 @@
-# MAX — Complete Technical Architecture
+# MAX — Technical Architecture
 
-This document describes every component of MAX in full technical detail: what it does, how it works, why it was built that way, and how it connects to everything else. It is the definitive reference for understanding the system.
+This document describes every component of MAX: what it does, how it works, why it was built that way, and how it connects to the rest of the system.
 
 ---
 
@@ -38,7 +38,7 @@ MAX is an autonomous multi-agent AI system that:
 5. Continuously evolves its own prompts, tool configurations, and strategies
 6. Guards against degradation with a 24-benchmark sentinel testing system
 
-It is designed to run 24/7, survive restarts, recover orphaned work, and improve over time without human intervention.
+It is designed to run continuously, survive restarts, recover orphaned work, and evolve under regression-gated self-modification.
 
 ### 1.2 Design Philosophy
 
